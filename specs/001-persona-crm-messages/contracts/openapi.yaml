@@ -1,0 +1,198 @@
+openapi: 3.0.3
+info:
+  title: Blooming CRM Message Generation API
+  description: |
+    페르소나 기반 초개인화 CRM 메시지 자동 생성 API
+    
+    ## 주요 기능
+    - 고객 ID 기반 메시지 자동 생성
+    - 페르소나 특성 반영
+    - 브랜드 톤앤매너 적용
+    - 상품 추천 통합
+    - 화장품법 컴플라이언스 검증
+    
+    ## 인증
+    현재 버전에서는 `x-user-id` 헤더를 통한 간단한 식별만 지원합니다.
+    향후 JWT 또는 API Key 인증 추가 예정.
+  version: 1.0.0
+  contact:
+    name: Blooming Dev Team
+    email: dev@blooming.example.com
+
+servers:
+  - url: http://localhost:8000
+    description: 로컬 개발 서버
+  - url: https://api.blooming.example.com
+    description: 프로덕션 서버 (예정)
+
+tags:
+  - name: messages
+    description: CRM 메시지 생성 관련 엔드포인트
+
+paths:
+  /message:
+    get:
+      tags:
+        - messages
+      summary: CRM 메시지 생성
+      description: |
+        고객 ID를 기반으로 개인화된 CRM 메시지를 자동 생성합니다.
+        
+        **처리 과정**:
+        1. 고객 프로필 조회 (Supabase)
+        2. 페르소나 분석 및 전략 수립 (Orchestrator)
+        3. 상품 추천 (Info Retrieval)
+        4. 메시지 생성 (Message Writer with GPT-5)
+        5. 컴플라이언스 검증 (Compliance Check)
+        6. 최종 응답 반환
+        
+        **응답 시간**: 평균 10-30초 (GPT-5 API 응답 시간에 종속)
+      operationId: generateMessage
+      parameters:
+        - name: x-user-id
+          in: header
+          required: true
+          description: 고객 고유 ID
+          schema:
+            type: string
+            example: "user_12345"
+      responses:
+        '200':
+          description: 메시지 생성 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              examples:
+                successExample:
+                  summary: 성공 응답 예시
+                  value:
+                    message: |
+                      김아모레 고객님,
+                      
+                      VVIP 회원님만을 위한 특별한 소식을 전해드립니다.
+                      
+                      고객님께서 관심 있게 보셨던 **설화수 자음생 에센스**가 지금 15% 할인 중입니다!
+                      1,240명의 고객이 "보습력좋은", "탄력있는", "윤기나는"이라고 극찬한 제품입니다.
+                      
+                      재구매 주기가 다가왔습니다. 이번 기회를 놓치지 마세요.
+                      
+                      [지금 바로 구매하기]
+                    user: "user_12345"
+                    method: "email"
+        '400':
+          description: 잘못된 요청 (필수 헤더 누락 등)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingHeader:
+                  summary: 헤더 누락
+                  value:
+                    error: "x-user-id header is required"
+                    user: null
+        '404':
+          description: 고객 정보를 찾을 수 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                userNotFound:
+                  summary: 고객 미존재
+                  value:
+                    error: "User not found: user_99999"
+                    user: "user_99999"
+        '500':
+          description: 서버 내부 오류 (GPT-5 API 실패, 컴플라이언스 검증 5회 실패 등)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                complianceFailed:
+                  summary: 컴플라이언스 검증 실패
+                  value:
+                    error: "Failed to generate compliant message after 5 retries"
+                    user: "user_12345"
+                apiError:
+                  summary: GPT-5 API 오류
+                  value:
+                    error: "OpenAI API error: rate limit exceeded"
+                    user: "user_12345"
+
+components:
+  schemas:
+    MessageResponse:
+      type: object
+      required:
+        - message
+        - user
+        - method
+      properties:
+        message:
+          type: string
+          description: 생성된 CRM 메시지 텍스트
+          example: "김아모레 고객님, VVIP 회원님만을 위한 특별한 소식..."
+        user:
+          type: string
+          description: 요청한 고객 ID
+          example: "user_12345"
+        method:
+          type: string
+          enum: [email, sms, app_push, kakaotalk]
+          description: 메시지 발송 채널
+          example: "email"
+        metadata:
+          type: object
+          description: 추가 메타데이터 (선택적)
+          properties:
+            persona_used:
+              type: string
+              example: "프리미엄 안티에이징 추구자"
+            product_id:
+              type: string
+              example: "SW-SERUM-001"
+            brand:
+              type: string
+              example: "Sulwhasoo"
+            retry_count:
+              type: integer
+              example: 0
+            generated_at:
+              type: string
+              format: date-time
+              example: "2025-12-12T10:30:00Z"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - user
+      properties:
+        error:
+          type: string
+          description: 오류 메시지
+          example: "Failed to generate compliant message after 5 retries"
+        user:
+          type: string
+          nullable: true
+          description: 요청한 고객 ID (있는 경우)
+          example: "user_12345"
+        details:
+          type: object
+          description: 추가 오류 상세 정보 (선택적)
+          example:
+            prohibited_words: ["완치", "기적"]
+            retry_count: 5
+
+  securitySchemes:
+    UserIdHeader:
+      type: apiKey
+      in: header
+      name: x-user-id
+      description: 고객 고유 ID (현재는 인증 없이 식별만 수행)
+
+security:
+  - UserIdHeader: []

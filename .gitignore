@@ -1,0 +1,17 @@
+# General
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
