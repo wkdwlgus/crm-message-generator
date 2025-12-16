@@ -49,6 +49,13 @@ class CartItem(BaseModel):
     added_at: str  # YYYY-MM-DD
 
 
+class RecentlyViewedItem(BaseModel):
+    """최근 본 상품"""
+    id: str
+    name: str
+    brand: Optional[str] = None
+
+
 class CustomerProfile(BaseModel):
     """고객 프로필 - 페르소나 기반 메시지 생성의 기초 데이터"""
     
@@ -83,7 +90,7 @@ class CustomerProfile(BaseModel):
     # 최근 활동
     last_engagement: LastEngagement
     cart_items: List[CartItem] = Field(default_factory=list)
-    recently_viewed_items: List[str] = Field(default_factory=list)
+    recently_viewed_items: List[RecentlyViewedItem] = Field(default_factory=list)
     
     class Config:
         json_schema_extra = {
@@ -131,8 +138,8 @@ class CustomerProfile(BaseModel):
                 ],
 
                 "recently_viewed_items": [
-                    "Sulwhasoo Concentrated Ginseng Cream",
-                    "Hera Sensual Powder Matte"
+                    {"id": "SW-CREAM-001", "name": "Sulwhasoo Concentrated Ginseng Cream", "brand": "Sulwhasoo"},
+                    {"id": "HR-POWDER-01", "name": "Hera Sensual Powder Matte", "brand": "Hera"}
                 ]
             }
         }
