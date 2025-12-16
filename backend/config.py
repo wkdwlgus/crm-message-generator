@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     # Application Settings
     max_retry_count: int = 5
     env: str = "development"
+    recommendation_api_url: str = "http://localhost:8001"
     
     # CORS
     allowed_origins: str = "http://localhost:5173"

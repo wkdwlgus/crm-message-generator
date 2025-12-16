@@ -4,6 +4,7 @@ Info Retrieval Node
 """
 from typing import TypedDict
 from services.mock_data import get_mock_product, get_mock_brand, recommend_product_for_customer
+from services.recommendation import fetch_recommendation
 from models.user import CustomerProfile
 
 
@@ -38,9 +39,18 @@ def info_retrieval_node(state: GraphState) -> GraphState:
     """
     user_data = state["user_data"]
     
-    # 1. 상품 추천
-    recommended_product = recommend_product_for_customer(user_data)
+    # 1. 상품 추천 (외부 API 호출 시도 후 실패 시 Mock 사용)
+    recommended_product_id = fetch_recommendation(user_data)
     
+    if recommended_product_id:
+        # 추천된 ID로 상품 정보 조회
+        recommended_product = get_mock_product(recommended_product_id)
+        
+    # 추천 실패하거나 상품 정보가 없는 경우 기존 Mock 로직 사용
+    if not recommended_product_id or not recommended_product:
+        print("외부 추천 실패 또는 상품 정보 없음, Mock 로직 사용")
+        recommended_product = recommend_product_for_customer(user_data)
+
     # 2. 브랜드 톤앤매너 조회
     brand_profile = get_mock_brand(recommended_product.brand)
     
