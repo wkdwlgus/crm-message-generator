@@ -43,12 +43,17 @@ def return_response_node(state: GraphState) -> dict:
         }
     
     # 성공 응답 생성
+    strategy_input = state["strategy"]
+    persona_id = "default_persona"
+    if isinstance(strategy_input, dict):
+        persona_id = strategy_input.get("persona_id", "default_persona")
+    
     generated_message = GeneratedMessage(
         user_id=state["user_id"],
         message_text=state["message"],
         channel=state.get("channel", "SMS"),
         product_id=state["recommended_product_id"],
-        persona_id=state["strategy"]["persona_id"],
+        persona_id=persona_id,
         compliance_passed=state.get("compliance_passed", True),  # 🚨 추가 필수
         retry_count=state.get("retry_count", 0),
     )

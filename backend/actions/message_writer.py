@@ -3,10 +3,9 @@ Message Writer Node
 OpenAI GPT-5 API를 사용한 메시지 생성
 """
 from typing import TypedDict
-import openai
-from config import settings
+from services.llm_client import llm_client
+from utils.prompt_loader import load_prompt_template
 from models.user import CustomerProfile
-
 
 class GraphState(TypedDict):
     """LangGraph State 정의"""
@@ -28,122 +27,145 @@ def message_writer_node(state: GraphState) -> GraphState:
     Message Writer Node
     
     OpenAI GPT API를 호출하여 개인화된 메시지를 생성합니다.
-    
-    Args:
-        state: LangGraph State
-        
-    Returns:
-        업데이트된 GraphState
     """
     strategy = state["strategy"]
     user_data = state["user_data"]
     product_data = state["product_data"]
     brand_tone = state["brand_tone"]
-    channel = state.get("channel", "SMS")
+    channel = state.get("channel", "APPPUSH")
     
-    # OpenAI API 설정
-    client = openai.OpenAI(api_key=settings.openai_api_key)
+    import json
+    import os
+
+    # 1. 프롬프트 템플릿 로드
+    prompt_config = load_prompt_template("writer_prompt.yaml")
+    # Base Template (Identity only, or empty if fully replaced)
+    # 기존 템플릿의 {brand_name}, {tone_style} 부분은 아래 로직으로 대체됨
     
-    # 프롬프트 생성
-    prompt = build_prompt(strategy, user_data, product_data, brand_tone, channel)
+    user_prompt_template = prompt_config["user"]
+    
+    # CRM Guideline Load
+    guideline_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "services/crm_guideline.json")
+    try:
+        with open(guideline_path, "r", encoding="utf-8") as f:
+            crm_guidelines = json.load(f)
+    except FileNotFoundError:
+        crm_guidelines = {"brands": {}, "groups": {}}
+
+    brand_name = product_data['brand']
+    
+    # Dynamic System Prompt Construction
+    if brand_name in crm_guidelines["brands"]:
+        brand_cfg = crm_guidelines["brands"][brand_name]
+        group_cfg = crm_guidelines["groups"][brand_cfg["group"]]
+        
+        system_prompt = f"""
+당신은 {brand_name}의 전문 CRM 카피라이터입니다.
+
+[그룹 가이드라인: {brand_cfg["group"]}]
+톤: {group_cfg["tone"]}
+규칙:
+- {"\n- ".join(group_cfg["rules"])}
+
+[브랜드 가이드라인]
+타겟: {brand_cfg["target"]}
+키워드: {", ".join(brand_cfg["keywords"])}
+전략: {brand_cfg["focus"]}
+"""
+    else:
+        # Fallback to Legacy Logic
+        system_prompt_template = prompt_config["system"]
+        tone_examples = "\n".join(f"- {ex}" for ex in brand_tone.get("tone_manner_examples", []))
+        
+        system_prompt = system_prompt_template.format(
+            brand_name=brand_name,
+            tone_style=brand_tone['tone_manner_style'],
+            tone_examples=tone_examples
+        )
+
+    # 2. 채널 제한 텍스트 결정 (Restored)
+    channel_limits = {
+        "APPPUSH": "50자 이내",
+        "KAKAO": "1000자 이내 (첫 문장 30자 이내 권장)",
+        "EMAIL": "제한 없음 (단, 핵심 메시지는 첫 200자 이내)",
+    }
+    limit = channel_limits.get(channel, "적절한 길이")
+    
+    # 3. 전략 변수 설정 (Orchestrator int 입력 대응)
+    strategy_input = state["strategy"]
+    
+    # 기본값 설정
+    persona_name = "Trend Setter"
+    communication_tone = "Casual & Trendy"
+    message_goal = "Product Recommendation"
+    
+    if isinstance(strategy_input, int):
+        # Orchestrator가 Case(int)를 반환하는 경우 Goal 매핑
+        goals = {
+            0: "Best Seller Recommendation (Cold Start)",
+            1: "Interest-based Recommendation (Behavioral)", 
+            2: "Personalized Recommendation (Profile-based)",
+            3: "Repurchase Reminder (Hybrid)"
+        }
+        message_goal = goals.get(strategy_input, "Product Recommendation")
+    elif isinstance(strategy_input, dict):
+        # Dict 형태인 경우 (Future Proof)
+        persona_name = strategy_input.get("persona_name", persona_name)
+        message_goal = strategy_input.get("message_goal", message_goal)
+        communication_tone = strategy_input.get("communication_tone", communication_tone)
+
+    user_prompt = user_prompt_template.format(
+        user_name=user_data.name,
+        age_group=user_data.age_group,
+        membership_level=user_data.membership_level,
+        skin_type=', '.join(user_data.skin_type),
+        skin_concerns=', '.join(user_data.skin_concerns),
+        last_purchase=user_data.last_purchase.product_name if user_data.last_purchase else '없음',
+        product_name=product_data['name'],
+        brand_name=product_data['brand'],
+        discounted_price=f"{product_data['price']['discounted_price']:,}",
+        discount_rate=product_data['price']['discount_rate'],
+        product_desc=product_data['description_short'],
+        review_keywords=', '.join(product_data['review']['top_keywords']),
+        persona_name=persona_name,
+        message_goal=message_goal,
+        communication_tone=communication_tone,
+        channel=channel,
+        limit_text=limit
+    )
     
     try:
-        # GPT API 호출
-        response = client.chat.completions.create(
-            model=settings.openai_model,
+        # 4. LLM 호출
+        result = llm_client.generate_chat_completion(
             messages=[
-                {
-                    "role": "system",
-                    "content": "당신은 한국 화장품 CRM 메시지 작성 전문가입니다. 고객 데이터와 브랜드 톤앤매너를 기반으로 개인화된 메시지를 한국어로 작성합니다."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
             ],
-            temperature=0.7,
-            max_tokens=500,
+            temperature=0.7
         )
         
-        # 생성된 메시지 추출
-        generated_message = response.choices[0].message.content.strip()
+        generated_message = result["content"]
+        usage = result["usage"]
+        
+        # 5. 비용 계산 (GPT-4 기준: Input $0.03/1k, Output $0.06/1k)
+        # Note: 모델 버전에 따라 가격이 다를 수 있음. 기본 GPT-4 가격 적용.
+        input_cost = (usage["prompt_tokens"] / 1000) * 0.03
+        output_cost = (usage["completion_tokens"] / 1000) * 0.06
+        total_cost = input_cost + output_cost
+        
         state["message"] = generated_message
+        state["error"] = ""
+        
+        # 6. 토큰 및 비용 출력
+        print("\n" + "="*50)
+        print("💰 Token Usage & Cost (GPT-4)")
+        print(f"  - Input Tokens: {usage['prompt_tokens']}")
+        print(f"  - Output Tokens: {usage['completion_tokens']}")
+        print(f"  - Total Tokens: {usage['total_tokens']}")
+        print(f"  - Estimated Cost: ${total_cost:.4f}")
+        print("="*50 + "\n")
         
     except Exception as e:
         state["error"] = f"메시지 생성 중 오류 발생: {str(e)}"
     
     return state
-
-
-def build_prompt(strategy: dict, user_data: CustomerProfile, product_data: dict, brand_tone: dict, channel: str) -> str:
-    """
-    GPT API 프롬프트 생성
-    
-    Args:
-        strategy: 메시지 전략
-        user_data: 고객 데이터
-        product_data: 상품 데이터
-        brand_tone: 브랜드 톤앤매너
-        channel: 채널 (SMS, KAKAO, EMAIL)
-        
-    Returns:
-        프롬프트 문자열
-    """
-    # 채널별 문자 수 제한
-    channel_limits = {
-        "SMS": "90자 이내",
-        "KAKAO": "1000자 이내 (첫 문장 30자 이내 권장)",
-        "EMAIL": "제한 없음 (단, 핵심 메시지는 첫 200자 이내)",
-    }
-    
-    limit = channel_limits.get(channel, "적절한 길이")
-    
-    # 브랜드 톤앤매너 예시
-    tone_examples = "\n".join(f"- {ex}" for ex in brand_tone.get("tone_manner_examples", []))
-    
-    prompt = f"""
-고객 정보:
-- 이름: {user_data.name}
-- 연령대: {user_data.age_group}
-- 멤버십 등급: {user_data.membership_level}
-- 피부 타입: {', '.join(user_data.skin_type)}
-- 피부 고민: {', '.join(user_data.skin_concerns)}
-- 최근 구매 상품: {user_data.last_purchase.product_name if user_data.last_purchase else '없음'}
-- 재구매 주기 알림: {'활성' if user_data.repurchase_cycle_alert else '비활성'}
-
-추천 상품:
-- 브랜드: {product_data['brand']}
-- 상품명: {product_data['name']}
-- 할인가: {product_data['price']['discounted_price']:,}원 ({product_data['price']['discount_rate']}% 할인)
-- 평점: {product_data['review']['score']}/5.0 (리뷰 {product_data['review']['count']:,}개)
-- 인기 키워드: {', '.join(product_data['review']['top_keywords'])}
-- 설명: {product_data['description_short']}
-
-메시지 전략:
-- 페르소나: {strategy['persona_name']}
-- 커뮤니케이션 톤: {strategy['communication_tone']}
-- 디테일 레벨: {strategy['detail_level']}
-- 메시지 목표: {strategy['message_goal']}
-
-브랜드 톤앤매너:
-- 스타일: {brand_tone['tone_manner_style']}
-- 예시:
-{tone_examples}
-
-채널: {channel} ({limit})
-
-위 정보를 바탕으로 {user_data.name} 고객에게 {product_data['name']}을(를) 추천하는 {channel} 메시지를 작성해주세요.
-
-요구사항:
-1. 브랜드의 톤앤매너를 반영할 것
-2. 고객의 피부 타입과 고민을 언급할 것
-3. 상품의 핵심 장점을 강조할 것
-4. 할인 혜택을 명시할 것
-5. {limit} 준수할 것
-6. 한국어로만 작성할 것
-7. 화장품법 준수 (절대적 효능 표현 금지, 과장 광고 금지)
-
-메시지만 출력하고, 추가 설명은 하지 마세요.
-"""
-    
-    return prompt
