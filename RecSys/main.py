@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import uvicorn
-from recommendation_model import get_recommendation
+from recommendation_model_API import get_recommendation
 from dotenv import load_dotenv
 import os
 from models import CustomerProfile
@@ -19,6 +19,7 @@ app = FastAPI(
 class RecommendationRequest(BaseModel):
     user_id: str
     case: int # 1: No data, 2: History only, 3: Profile only, 4: Both
+    target_brand: Optional[List[str]] = None # Brands to filter recommendations by
     user_data: Optional[CustomerProfile] = None
 
 class RecommendationResponse(BaseModel):

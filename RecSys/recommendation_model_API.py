@@ -34,17 +34,44 @@ async def fetch_products_from_supabase() -> Dict[str, str]:
             formatted_products = {}
             for p in products_data:
                 # Adjust field names based on actual DB schema
-                p_id = p.get("id") or p.get("product_id")
-                name = p.get("name") or p.get("product_name")
+                # Schema: id, product_code, brand, name, category_major, category_middle, category_small, 
+                # price_original, price_final, discount_rate, review_score, review_count, features, analytics, keywords
+                
+                p_id = p.get("product_code") or str(p.get("id"))
+                name = p.get("name")
                 brand = p.get("brand", "")
-                category = p.get("category", "")
-                desc = p.get("description", "")
+                
+                # Construct category string
+                cats = [p.get("category_major"), p.get("category_middle"), p.get("category_small")]
+                category = " > ".join([c for c in cats if c])
+                
+                # Construct description from keywords and features
+                keywords = p.get("keywords", "")
+                price = p.get("price_final")
+                review_score = p.get("review_score")
+                
+                desc_parts = []
+                if keywords:
+                    desc_parts.append(f"Keywords: {keywords}")
+                if price:
+                    desc_parts.append(f"Price: {price}")
+                if review_score:
+                    desc_parts.append(f"Rating: {review_score}")
+                
+                desc = ", ".join(desc_parts)
                 
                 if p_id and name:
                     info = f"{name} (Brand: {brand}, Category: {category}, {desc})"
                     formatted_products[p_id] = info
             
             PRODUCTS_CACHE = formatted_products
+            
+            # Debug: Print first 3 products to verify format
+            print("DEBUG: Sample products from DB:")
+            for i, (pid, info) in enumerate(formatted_products.items()):
+                if i >= 3: break
+                print(f" - {pid}: {info}")
+                
             return formatted_products
             
     except Exception as e:
@@ -58,9 +85,11 @@ async def get_recommendation(request_data: Any) -> Dict[str, Any]:
     """
     # Fetch products dynamically
     products_db = await fetch_products_from_supabase()
-    
+    print(f"DEBUG: Fetched {len(products_db)} products from DB.")
+
     # If DB fetch fails or is empty, use a rich mock DB for testing
     if not products_db:
+        print("DEBUG: Using mock DB")
         products_db = {
             "SW-SERUM-001": "Sulwhasoo Concentrated Ginseng Renewing Serum (Brand: Sulwhasoo, Category: Serum, Anti-aging, Dry skin)",
             "HR-CUSHION-02": "Hera Black Cushion (Brand: Hera, Category: Makeup, All skin types, Trendy)",
@@ -70,6 +99,32 @@ async def get_recommendation(request_data: Any) -> Dict[str, Any]:
             "ET-TONER-005": "Etude House SoonJung Toner (Brand: Etude, Category: Toner, Sensitive, Soothing)",
             "IN-CLAY-006": "Innisfree Volcanic Pore Clay Mask (Brand: Innisfree, Category: Mask, Pore care, Oily skin)"
         }
+
+    # Filter by target_brand if provided
+    target_brands = getattr(request_data, 'target_brand', None)
+    if target_brands:
+        filtered_products = {}
+        for pid, info in products_db.items():
+            # Check if ANY target brand is in the product info
+            # Info format: "Name (Brand: BrandName, ...)"
+            # We check if any brand in the list is present in the info string
+            if any(brand.lower() in info.lower() for brand in target_brands):
+                filtered_products[pid] = info
+        
+        if filtered_products:
+            products_db = filtered_products
+            print(f"Filtered by brands {target_brands}: {len(products_db)} products found.")
+        else:
+            print(f"No products found for brands {target_brands}. Using all products.")
+
+    # Limit the number of products to avoid token limits (TPM 30k limit)
+    MAX_PRODUCTS = 20
+    if len(products_db) > MAX_PRODUCTS:
+        print(f"DEBUG: Limiting products from {len(products_db)} to {MAX_PRODUCTS} (Randomly)")
+        import random
+        # Randomly sample items
+        sampled_items = random.sample(list(products_db.items()), MAX_PRODUCTS)
+        products_db = dict(sampled_items)
 
     case = request_data.case
     user_data = request_data.user_data

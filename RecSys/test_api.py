@@ -6,6 +6,7 @@ import json
 mock_payload = {
     "user_id": "user_12345",
     "case": 4,
+    "target_brand": ["설화수", "헤라"], # 특정 브랜드 필터링 추가 (리스트)
     "user_data": {
         "user_id": "user_12345",
         "name": "김아모레",
