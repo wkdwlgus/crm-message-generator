@@ -1,47 +1,46 @@
 /**
  * ChannelSelector Component
- * 메시지 채널 선택 컴포넌트
  */
 import type { ChannelType } from '../types/api';
 
+
 interface ChannelSelectorProps {
-  selected: ChannelType;
-  onSelect: (channel: ChannelType) => void;
+  selected: ChannelType | null;
+  onSelect: (channel: ChannelType | null) => void;
   disabled?: boolean;
 }
 
 export function ChannelSelector({ selected, onSelect, disabled = false }: ChannelSelectorProps) {
-  const channels: { value: ChannelType; label: string; icon: string }[] = [
-    { value: 'SMS', label: 'SMS', icon: '📱' },
-    { value: 'KAKAO', label: '카카오톡', icon: '💬' },
-    { value: 'EMAIL', label: '이메일', icon: '📧' },
+  // 아이콘과 라벨 설정
+  const channels: { id: ChannelType; label: string; icon: string }[] = [
+    { id: 'APP PUSH', label: ' APP PUSH', icon: '📱' },
+    { id: 'SMS', label: ' SMS', icon: '💬' },
+    { id: 'KAKAO', label: ' KAKAO', icon: '💛' },
+    { id: 'EMAIL', label: ' EMAIL', icon: '📧' },
   ];
 
+
   return (
-    <div className="w-full max-w-md">
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        메시지 채널 선택
-      </label>
-      <div className="flex gap-2">
-        {channels.map((channel) => (
-          <button
-            key={channel.value}
-            onClick={() => onSelect(channel.value)}
-            disabled={disabled}
-            className={`
-              flex-1 px-4 py-3 rounded-lg border-2 transition-all
-              ${selected === channel.value
-                ? 'border-pink-500 bg-pink-50 text-pink-700'
-                : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-              }
-              ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-            `}
-          >
-            <div className="text-2xl mb-1">{channel.icon}</div>
-            <div className="text-sm font-medium">{channel.label}</div>
-          </button>
-        ))}
-      </div>
+    <div className="grid grid-cols-2 gap-2 w-full">
+      {channels.map((ch) => (
+        <button
+          key={ch.id}
+          onClick={() => onSelect(selected === ch.id ? null : ch.id)}
+          disabled={disabled}
+          className={`
+            w-full py-3 px-4 border-2 border-black transition-all
+            text-xs font-black
+            ${selected === ch.id 
+              ? 'bg-yellow-300 shadow-none translate-x-1 translate-y-1' 
+              : 'bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-50'
+            }
+            disabled:opacity-50 disabled:cursor-not-allowed
+          `}
+        >
+          <span className="text-sm">{ch.icon}</span>
+          <span>{ch.label}</span>
+        </button>
+      ))}
     </div>
   );
 }
