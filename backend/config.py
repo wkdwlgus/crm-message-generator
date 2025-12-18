@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     
     # OpenAI API
     openai_api_key: str
-    openai_model: str = "gpt-4"
+    openai_model: str = "gpt-4o-mini"
     
     # Application Settings
     max_retry_count: int = 5

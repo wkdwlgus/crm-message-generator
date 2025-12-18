@@ -5,6 +5,7 @@ GET /message 엔드포인트
 from fastapi import APIRouter, Header, HTTPException, Query
 from models.message import MessageResponse, ErrorResponse
 from services.mock_data import get_mock_customer
+from services.user_service import get_customer_from_db
 from graph import message_workflow
 from typing import Optional
 
@@ -40,7 +41,8 @@ async def generate_message(
         HTTPException: 고객 정보를 찾을 수 없거나 메시지 생성 실패 시
     """
     # 1. 고객 데이터 조회
-    customer = get_mock_customer(x_user_id)
+    # customer = get_mock_customer(x_user_id)
+    customer = get_customer_from_db(x_user_id)
     
     if not customer:
         raise HTTPException(

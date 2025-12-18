@@ -22,6 +22,7 @@ class GraphState(TypedDict):
     error: str
     error_reason: str  # Compliance 실패 이유
     success: bool  # API 응답용
+    retrieved_legal_rules: list  # 캐싱용: Compliance 노드에서 한 번 검색한 규칙 재사용
 
 
 def message_writer_node(state: GraphState) -> GraphState:
@@ -59,7 +60,6 @@ def message_writer_node(state: GraphState) -> GraphState:
         crm_guidelines = {"brands": {}, "groups": {}}
 
     brand_name = product_data['brand']
-    print("check point 1 - brand_name:", brand_name)
     
     # Dynamic System Prompt Construction
     if brand_name in crm_guidelines["brands"]:
@@ -106,7 +106,7 @@ def message_writer_node(state: GraphState) -> GraphState:
 - 대체 가능한 합법적 표현을 사용하세요
 - 화장품법 준수를 최우선으로 하세요
 """
-        print(f"🔄 [Retry {retry_count}] 이전 거부 이유를 프롬프트에 포함시켰습니다.")
+    
 
     # 2. 채널 제한 텍스트 결정 (Restored)
     channel_limits = {

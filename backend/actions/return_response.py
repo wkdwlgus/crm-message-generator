@@ -22,6 +22,7 @@ class GraphState(TypedDict):
     error: str
     error_reason: str  # Compliance 실패 이유
     success: bool  # API 응답용
+    retrieved_legal_rules: list  # 캐싱용: Compliance 노드에서 한 번 검색한 규칙 재사용
 
 
 def return_response_node(state: GraphState) -> dict:
@@ -38,15 +39,15 @@ def return_response_node(state: GraphState) -> dict:
     """
     if not state.get("compliance_passed", False):
         # Compliance 실패 시 에러 응답
-        print(f"❌ Compliance 실패: {state.get('error', '메시지 생성 실패')}")
+        print(f"❌ Compliance 실패: Common Response 생성")
         return {
-            "success": False,
-            "error": state.get("error", "메시지 생성 실패"),
+            "success": True,
+            "message": "특별한 혜택을 준비했습니다. 자세한 내용은 앱에서 확인해주세요."
         }
     
     # 성공 응답 생성
     print(f"✅ 최종 응답 생성: user={state['user_id']}, message={state['message'][:50]}...")
-    
+    print(f"최종 state 상태, {state}")
     return {
         "success": True,
     }

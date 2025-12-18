@@ -24,6 +24,7 @@ class GraphState(TypedDict):
     error: str
     error_reason: str  # Compliance 실패 이유
     success: bool  # API 응답용
+    retrieved_legal_rules: list  # 캐싱용: Compliance 노드에서 한 번 검색한 규칙 재사용
 
 
 # RecSys API 설정
@@ -92,10 +93,6 @@ def info_retrieval_node(state: GraphState) -> GraphState:
     user_data = state["user_data"]
     strategy_case = state["strategy"]  # orchestrator에서 결정한 케이스
     target_brands = state.get("recommended_brand", None)  # orchestrator에서 결정한 브랜드
-    
-    print("🔍 Info Retrieval 시작...")
-    print(f"  - Strategy Case: {strategy_case}")
-    print(f"  - Target Brands: {target_brands}")
     
     # 1. RecSys API 호출 (동기 방식)
     recommendation = call_recsys_api(
