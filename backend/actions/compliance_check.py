@@ -569,7 +569,7 @@ def compliance_check_node(state: GraphState) -> GraphState:
         if not passed:
             state["retry_count"] = retry_count + 1
 
-            if state["retry_count"] >= 5:
+            if state["retry_count"] >= settings.max_retry_count:
                 print(f"  ❌ [Compliance Check] 최대 재시도 횟수 도달. 최종 실패 처리.")
                 state["compliance_passed"] = False
                 

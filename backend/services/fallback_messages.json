@@ -1,0 +1,332 @@
+{
+  "meta": {
+    "version": "1.0",
+    "usage": "Compliance 5회 실패 시 사용할 안전한 Fallback 메시지",
+    "description": "화장품법 위반 없이 브랜드 톤만 유지하는 기본 CRM 메시지",
+    "last_updated": "2024-12-18"
+  },
+  "fallback_messages": {
+    "설화수": {
+      "group": "Luxury_Heritage",
+      "safe_messages": [
+        "{customer_name}님, 설화수가 전하는 특별한 순간을 경험해보세요.",
+        "귀한 분께 드리는 설화수의 정성, 깊이 있는 케어를 만나보시기 바랍니다.",
+        "{customer_name}님께 어울리는 설화수 제품을 준비했습니다."
+      ],
+      "product_mention": "{product_name}로 피부 본연의 건강함을 지켜보세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 설화수의 새로운 제안을 확인해보세요.",
+        "KAKAO": "{customer_name}님께 특별히 준비한 설화수 제품이 있습니다. 피부 본연의 건강함을 위한 정성 어린 케어를 경험해보시기 바랍니다.",
+        "EMAIL": "{customer_name}님께,\n\n설화수가 오랜 시간 연구하고 정성껏 준비한 제품을 소개합니다. 피부 본연의 건강을 지키는 설화수만의 케어를 경험해보시기 바랍니다."
+      }
+    },
+    "헤라": {
+      "group": "Luxury_Heritage",
+      "safe_messages": [
+        "{customer_name}님! 헤라의 새로운 제품을 만나보세요.",
+        "당당한 {customer_name}님을 위한 헤라의 제안입니다.",
+        "헤라와 함께 더욱 빛나는 하루를 시작하세요."
+      ],
+      "product_mention": "{product_name}로 매일을 특별하게 완성하세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 헤라 신상품 도착! 지금 확인하세요.",
+        "KAKAO": "{customer_name}님! 헤라의 새로운 컬렉션이 준비되었습니다. 당신만의 스타일을 완성할 제품을 만나보세요.",
+        "EMAIL": "{customer_name}님께,\n\n헤라가 제안하는 새로운 뷰티 솔루션을 소개합니다. 당당하고 세련된 당신의 일상을 더욱 빛나게 할 제품입니다."
+      }
+    },
+    "아모레퍼시픽": {
+      "group": "Luxury_Heritage",
+      "safe_messages": [
+        "{customer_name}님께 드리는 아모레퍼시픽의 특별한 제안입니다.",
+        "시간을 담은 아름다움, 아모레퍼시픽이 전합니다.",
+        "진정한 가치를 아시는 {customer_name}님께 어울리는 제품입니다."
+      ],
+      "product_mention": "{product_name}로 매일의 피부 케어를 특별하게 만들어보세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 아모레퍼시픽의 새로운 제안을 확인하세요.",
+        "KAKAO": "{customer_name}님께 특별히 준비한 아모레퍼시픽 제품이 있습니다. 오랜 시간 연구한 피부 케어의 정수를 경험해보세요.",
+        "EMAIL": "{customer_name}님께,\n\n아모레퍼시픽이 오랜 시간 연구하고 개발한 제품을 소개합니다. 피부 본연의 아름다움을 지키는 특별한 케어를 경험해보시기 바랍니다."
+      }
+    },
+    "에이피뷰티": {
+      "group": "Luxury_Heritage",
+      "safe_messages": [
+        "{customer_name}님께 에이피뷰티의 혁신적인 솔루션을 소개합니다.",
+        "정밀한 케어가 필요한 {customer_name}님을 위한 제품입니다.",
+        "에이피뷰티가 제안하는 프리미엄 케어를 경험해보세요."
+      ],
+      "product_mention": "{product_name}로 피부 본연의 건강을 지켜보세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 에이피뷰티의 혁신을 만나보세요.",
+        "KAKAO": "{customer_name}님을 위한 에이피뷰티의 프리미엄 솔루션입니다. 오랜 연구 끝에 탄생한 정밀한 케어를 경험해보세요.",
+        "EMAIL": "{customer_name}님께,\n\n에이피뷰티가 준비한 혁신적인 피부 케어 솔루션을 소개합니다. 과학적 연구를 바탕으로 개발된 제품으로 피부 건강을 지켜보세요."
+      }
+    },
+    "아이오페": {
+      "group": "Masstige_Premium",
+      "safe_messages": [
+        "{customer_name}님을 위한 아이오페의 맞춤 솔루션입니다.",
+        "아이오페가 제안하는 신뢰할 수 있는 피부 케어입니다.",
+        "연구를 거듭한 아이오페 제품을 만나보세요."
+      ],
+      "product_mention": "{product_name}로 건강한 피부를 가꿔보세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 아이오페의 새로운 솔루션 도착!",
+        "KAKAO": "{customer_name}님께 추천하는 아이오페 제품입니다. 오랜 연구를 통해 개발된 신뢰할 수 있는 피부 케어 솔루션입니다.",
+        "EMAIL": "{customer_name}님께,\n\n아이오페가 준비한 과학적인 피부 케어 솔루션을 소개합니다. 당신의 피부 고민을 위한 맞춤형 제품을 경험해보세요."
+      }
+    },
+    "라네즈": {
+      "group": "Masstige_Premium",
+      "safe_messages": [
+        "{customer_name}님, 라네즈의 촉촉한 케어를 만나보세요!",
+        "라네즈와 함께 건강한 피부를 가꿔보세요.",
+        "수분 가득한 피부를 위한 라네즈 제품입니다."
+      ],
+      "product_mention": "{product_name}로 하루 종일 촉촉함을 유지하세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 라네즈 신제품 출시! ✨",
+        "KAKAO": "{customer_name}님을 위한 라네즈의 수분 케어 제품이 도착했습니다. 건강하고 촉촉한 피부를 위한 특별한 케어를 시작해보세요.",
+        "EMAIL": "{customer_name}님께,\n\n라네즈가 준비한 수분 가득한 피부 케어 제품을 소개합니다. 매일 사용하는 즐거움을 느낄 수 있는 제품입니다."
+      }
+    },
+    "한율": {
+      "group": "Masstige_Premium",
+      "safe_messages": [
+        "{customer_name}님, 한율의 자연스러운 케어를 경험해보세요.",
+        "한율이 전하는 편안한 피부 케어입니다.",
+        "자연에서 얻은 성분으로 만든 한율 제품입니다."
+      ],
+      "product_mention": "{product_name}로 피부에 편안한 휴식을 선사하세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 한율의 자연스러운 케어를 만나보세요.",
+        "KAKAO": "{customer_name}님께 추천하는 한율의 자연 유래 성분 제품입니다. 피부에 편안함을 전하는 한율의 케어를 경험해보세요.",
+        "EMAIL": "{customer_name}님께,\n\n한율이 준비한 자연 친화적인 피부 케어 제품을 소개합니다. 피부에 편안한 휴식을 선사하는 한율의 케어입니다."
+      }
+    },
+    "마몽드": {
+      "group": "Masstige_Premium",
+      "safe_messages": [
+        "{customer_name}님, 마몽드의 향기로운 케어를 만나보세요. 🌸",
+        "마몽드가 전하는 특별한 순간입니다.",
+        "나를 위한 시간, 마몽드와 함께하세요."
+      ],
+      "product_mention": "{product_name}로 매일을 더 특별하게 만들어보세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 마몽드의 새로운 제품 도착! 🌸",
+        "KAKAO": "{customer_name}님께 추천하는 마몽드 제품입니다. 향기로운 케어로 기분 좋은 하루를 시작해보세요.",
+        "EMAIL": "{customer_name}님께,\n\n마몽드가 준비한 향기로운 피부 케어 제품을 소개합니다. 나를 위한 특별한 시간을 마몽드와 함께 만들어보세요."
+      }
+    },
+    "코스알엑스": {
+      "group": "Specialized_Solution",
+      "safe_messages": [
+        "{customer_name}님, 코스알엑스의 피부 케어 솔루션입니다.",
+        "코스알엑스가 제안하는 확실한 케어입니다.",
+        "많은 분들이 선택한 코스알엑스 제품입니다."
+      ],
+      "product_mention": "{product_name}로 피부 고민을 케어해보세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 코스알엑스 추천 제품 확인하세요.",
+        "KAKAO": "{customer_name}님께 추천하는 코스알엑스 제품입니다. 피부 고민을 위한 확실한 솔루션을 경험해보세요.",
+        "EMAIL": "{customer_name}님께,\n\n코스알엑스가 준비한 피부 케어 솔루션을 소개합니다. 많은 분들이 만족한 제품으로 피부 건강을 관리해보세요."
+      }
+    },
+    "에스트라": {
+      "group": "Specialized_Solution",
+      "safe_messages": [
+        "{customer_name}님, 에스트라의 전문 케어를 경험해보세요. 🩺",
+        "민감한 피부를 위한 에스트라 제품입니다.",
+        "에스트라가 전하는 신뢰할 수 있는 케어입니다."
+      ],
+      "product_mention": "{product_name}로 피부를 편안하게 케어하세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 에스트라의 전문 케어를 만나보세요.",
+        "KAKAO": "{customer_name}님께 추천하는 에스트라의 민감 피부 전문 제품입니다. 피부를 편안하게 케어하는 에스트라를 경험해보세요.",
+        "EMAIL": "{customer_name}님께,\n\n에스트라가 준비한 민감 피부 전문 케어 제품을 소개합니다. 피부 건강을 최우선으로 생각하는 에스트라의 케어입니다."
+      }
+    },
+    "프리메라": {
+      "group": "Specialized_Solution",
+      "safe_messages": [
+        "{customer_name}님, 프리메라의 착한 성분 제품입니다. 🌱",
+        "프리메라가 전하는 자연 친화적인 케어입니다.",
+        "피부와 지구를 생각하는 프리메라 제품입니다."
+      ],
+      "product_mention": "{product_name}로 건강한 피부를 가꿔보세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 프리메라의 클린 뷰티를 만나보세요.",
+        "KAKAO": "{customer_name}님께 추천하는 프리메라의 자연 친화적 제품입니다. 피부와 환경을 모두 생각하는 프리메라를 경험해보세요.",
+        "EMAIL": "{customer_name}님께,\n\n프리메라가 준비한 클린 뷰티 제품을 소개합니다. 자연에서 온 성분으로 피부를 건강하게 케어해보세요."
+      }
+    },
+    "홀리추얼": {
+      "group": "Specialized_Solution",
+      "safe_messages": [
+        "{customer_name}님, 홀리추얼과 함께 편안한 시간을 가져보세요. 🕯️",
+        "홀리추얼이 제안하는 힐링 케어입니다.",
+        "나를 위한 휴식 시간, 홀리추얼과 함께하세요."
+      ],
+      "product_mention": "{product_name}로 몸과 마음에 휴식을 선사하세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 홀리추얼의 힐링 케어를 경험하세요.",
+        "KAKAO": "{customer_name}님께 추천하는 홀리추얼의 웰니스 제품입니다. 편안한 휴식을 위한 홀리추얼의 케어를 경험해보세요.",
+        "EMAIL": "{customer_name}님께,\n\n홀리추얼이 준비한 웰니스 케어 제품을 소개합니다. 몸과 마음의 균형을 찾아주는 특별한 시간을 가져보세요."
+      }
+    },
+    "이니스프리": {
+      "group": "Mass_Lifestyle",
+      "safe_messages": [
+        "{customer_name}님, 이니스프리의 싱그러운 케어를 만나보세요! 🌿",
+        "자연에서 온 이니스프리 제품입니다.",
+        "이니스프리와 함께 즐거운 뷰티 라이프를 시작하세요."
+      ],
+      "product_mention": "{product_name}로 매일 건강한 피부를 가꿔보세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 이니스프리 신제품 출시!",
+        "KAKAO": "{customer_name}님께 추천하는 이니스프리의 자연 유래 제품입니다. 부담 없이 즐기는 데일리 케어를 시작해보세요.",
+        "EMAIL": "{customer_name}님께,\n\n이니스프리가 준비한 자연 친화적인 피부 케어 제품을 소개합니다. 제주의 깨끗한 자연에서 온 성분으로 건강한 피부를 가꿔보세요."
+      }
+    },
+    "에뛰드": {
+      "group": "Mass_Lifestyle",
+      "safe_messages": [
+        "{customer_name}님! 에뛰드의 즐거운 메이크업을 만나보세요! 🎀",
+        "에뛰드와 함께 매일 다른 메이크업을 즐겨보세요.",
+        "컬러풀한 에뛰드 제품으로 기분 전환하세요."
+      ],
+      "product_mention": "{product_name}로 나만의 스타일을 완성해보세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님! 에뛰드 신상 도착! 💄",
+        "KAKAO": "{customer_name}님께 추천하는 에뛰드의 트렌디한 컬러 제품입니다. 즐거운 메이크업으로 매일을 더 특별하게 만들어보세요.",
+        "EMAIL": "{customer_name}님께,\n\n에뛰드가 준비한 컬러풀한 메이크업 제품을 소개합니다. 다양한 컬러로 나만의 스타일을 표현해보세요."
+      }
+    },
+    "일리윤": {
+      "group": "Mass_Lifestyle",
+      "safe_messages": [
+        "{customer_name}님, 일리윤으로 온 가족 피부 케어를 시작하세요. 👨‍👩‍👧‍👦",
+        "순한 보습, 일리윤입니다.",
+        "일리윤과 함께 매일 촉촉한 하루를 보내세요."
+      ],
+      "product_mention": "{product_name}로 온 가족이 함께 사용해보세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 일리윤으로 가족 케어하세요.",
+        "KAKAO": "{customer_name}님께 추천하는 일리윤의 순한 보습 제품입니다. 온 가족이 안심하고 사용할 수 있는 일리윤을 경험해보세요.",
+        "EMAIL": "{customer_name}님께,\n\n일리윤이 준비한 가족 전용 피부 케어 제품을 소개합니다. 순한 성분으로 온 가족이 함께 사용할 수 있습니다."
+      }
+    },
+    "해피바스": {
+      "group": "Mass_Lifestyle",
+      "safe_messages": [
+        "{customer_name}님, 해피바스로 향기로운 샤워 타임을 즐겨보세요. 🛁",
+        "매일의 행복, 해피바스가 전합니다.",
+        "기분 좋은 향기로 하루를 시작하세요."
+      ],
+      "product_mention": "{product_name}로 상쾌한 하루를 시작해보세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 해피바스 신제품 출시!",
+        "KAKAO": "{customer_name}님께 추천하는 해피바스의 향기로운 제품입니다. 매일 반복되는 일상에 작은 행복을 더해보세요.",
+        "EMAIL": "{customer_name}님께,\n\n해피바스가 준비한 향기로운 바디 케어 제품을 소개합니다. 온 가족이 함께 즐기는 즐거운 샤워 타임을 만들어보세요."
+      }
+    },
+    "보타닉센스": {
+      "group": "Mass_Lifestyle",
+      "safe_messages": [
+        "{customer_name}님, 보타닉센스로 안심하고 케어하세요.",
+        "매일 사용하는 제품, 보타닉센스입니다.",
+        "자연 성분으로 만든 보타닉센스 제품입니다."
+      ],
+      "product_mention": "{product_name}로 매일의 습관을 건강하게 바꿔보세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 보타닉센스로 안심 케어하세요.",
+        "KAKAO": "{customer_name}님께 추천하는 보타닉센스의 자연 성분 제품입니다. 매일 사용하는 생활용품을 안심하고 선택하세요.",
+        "EMAIL": "{customer_name}님께,\n\n보타닉센스가 준비한 자연 친화적인 생활 케어 제품을 소개합니다. 순한 성분으로 매일의 습관을 건강하게 만들어보세요."
+      }
+    },
+    "아모레베이직": {
+      "group": "Mass_Lifestyle",
+      "safe_messages": [
+        "{customer_name}님, 아모레베이직으로 합리적인 케어를 시작하세요.",
+        "기본에 충실한 아모레베이직입니다.",
+        "필요한 것만 담은 아모레베이직 제품입니다."
+      ],
+      "product_mention": "{product_name}로 실속 있게 피부를 관리하세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 아모레베이직으로 실속 케어하세요.",
+        "KAKAO": "{customer_name}님께 추천하는 아모레베이직의 합리적인 제품입니다. 기본에 충실한 스킨케어를 경험해보세요.",
+        "EMAIL": "{customer_name}님께,\n\n아모레베이직이 준비한 합리적인 가격의 피부 케어 제품을 소개합니다. 꼭 필요한 것만 담아 부담 없이 사용할 수 있습니다."
+      }
+    },
+    "비레디": {
+      "group": "Men_Grooming",
+      "safe_messages": [
+        "{customer_name}님, 비레디로 빠르게 그루밍을 완성하세요. 😎",
+        "준비된 남자의 필수템, 비레디입니다.",
+        "비레디와 함께 자신감 있는 하루를 시작하세요."
+      ],
+      "product_mention": "{product_name}로 간편하게 멋을 내보세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 비레디로 쿨하게 준비하세요.",
+        "KAKAO": "{customer_name}님께 추천하는 비레디의 남성 그루밍 제품입니다. 빠르고 간편한 루틴으로 자신감을 완성해보세요.",
+        "EMAIL": "{customer_name}님께,\n\n비레디가 준비한 남성 전용 그루밍 제품을 소개합니다. 바쁜 아침, 빠르게 멋을 낼 수 있는 필수 아이템입니다."
+      }
+    },
+    "오딧세이": {
+      "group": "Men_Grooming",
+      "safe_messages": [
+        "{customer_name}님, 오딧세이가 제안하는 품격 있는 그루밍입니다.",
+        "깊이 있는 남자의 향기, 오딧세이입니다.",
+        "오딧세이와 함께 당신의 라이프스타일을 완성하세요."
+      ],
+      "product_mention": "{product_name}로 클래식한 매력을 더해보세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 오딧세이의 클래식한 그루밍을 경험하세요.",
+        "KAKAO": "{customer_name}님께 추천하는 오딧세이의 프리미엄 남성 제품입니다. 세월이 흘러도 변치 않는 가치를 경험해보세요.",
+        "EMAIL": "{customer_name}님께,\n\n오딧세이가 준비한 프리미엄 남성 그루밍 제품을 소개합니다. 깊이 있는 매력을 완성하는 오딧세이와 함께하세요."
+      }
+    },
+    "에스쁘아": {
+      "group": "Pro_Makeup_Tools",
+      "safe_messages": [
+        "{customer_name}님, 에스쁘아로 완벽한 메이크업을 완성하세요. 💋",
+        "프로의 터치를 담은 에스쁘아입니다.",
+        "에스쁘아와 함께 나만의 무드를 표현해보세요."
+      ],
+      "product_mention": "{product_name}로 트렌디한 룩을 연출해보세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 에스쁘아 신상 출시!",
+        "KAKAO": "{customer_name}님께 추천하는 에스쁘아의 프로페셔널 메이크업 제품입니다. 완벽한 룩을 위한 에스쁘아를 경험해보세요.",
+        "EMAIL": "{customer_name}님께,\n\n에스쁘아가 준비한 프로페셔널 메이크업 제품을 소개합니다. 과감한 컬러와 텍스처로 나만의 스타일을 표현해보세요."
+      }
+    },
+    "피카소": {
+      "group": "Pro_Makeup_Tools",
+      "safe_messages": [
+        "{customer_name}님, 피카소의 명품 브러쉬를 만나보세요.",
+        "장인의 손길이 담긴 피카소입니다.",
+        "피카소로 메이크업의 품격을 높여보세요."
+      ],
+      "product_mention": "{product_name}로 전문가의 터치를 경험하세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 피카소의 장인 정신을 경험하세요.",
+        "KAKAO": "{customer_name}님께 추천하는 피카소의 프리미엄 메이크업 도구입니다. 완벽한 메이크업을 위한 필수 아이템을 만나보세요.",
+        "EMAIL": "{customer_name}님께,\n\n피카소가 준비한 명품 메이크업 브러쉬를 소개합니다. 한 올 한 올 정성스레 만든 장인의 작품을 경험해보세요."
+      }
+    },
+    "피카소 꼴레지오니": {
+      "group": "Pro_Makeup_Tools",
+      "safe_messages": [
+        "{customer_name}님, 피카소 꼴레지오니의 감각적인 컬렉션입니다.",
+        "소장 가치가 있는 피카소 꼴레지오니입니다.",
+        "피카소 꼴레지오니로 일상을 특별하게 만들어보세요."
+      ],
+      "product_mention": "{product_name}로 당신의 개성을 표현하세요.",
+      "channel_variants": {
+        "APPPUSH": "{customer_name}님, 피카소 꼴레지오니의 감각을 경험하세요.",
+        "KAKAO": "{customer_name}님께 추천하는 피카소 꼴레지오니의 아티스틱 컬렉션입니다. 예술적 감각이 담긴 프리미엄 제품을 만나보세요.",
+        "EMAIL": "{customer_name}님께,\n\n피카소 꼴레지오니가 준비한 감각적인 컬렉션을 소개합니다. 소장 가치가 있는 아티스틱한 제품으로 일상을 특별하게 만들어보세요."
+      }
+    }
+  }
+}
