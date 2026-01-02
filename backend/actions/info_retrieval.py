@@ -1,17 +1,19 @@
+```
 """
 Info Retrieval Node
 필요한 정보 수집 (상품 추천, 브랜드 톤앤매너)
 """
 from typing import TypedDict, Optional, List
-from services.mock_data import get_mock_product, get_mock_brand, recommend_product_for_customer
+from services.recsys.engine import get_recommendation
+from services.recsys.models import CustomerProfile as RecsysCustomerProfile
 from models.user import CustomerProfile
-import httpx
 
 
 class GraphState(TypedDict):
     """LangGraph State 정의"""
     user_id: str
     user_data: CustomerProfile
+    intention: str
     recommended_brand: List[str]  # orchestrator에서 결정된 추천 브랜드
     strategy: int  # orchestrator에서 결정된 케이스 (1-4)
     recommended_product_id: str
@@ -26,56 +28,32 @@ class GraphState(TypedDict):
     success: bool  # API 응답용
 
 
-# RecSys API 설정
-RECSYS_API_URL = "http://localhost:8001/recommend"
-
-
-def call_recsys_api(
+async def call_internal_recsys(
     user_id: str, 
-    case: int,  # orchestrator에서 전달받은 case 사용
-    user_data: CustomerProfile,
+    case: int,
+    user_data: RecsysCustomerProfile,
     target_brands: Optional[List[str]] = None
 ) -> Optional[dict]:
     """
-    RecSys API를 호출하여 상품 추천을 받습니다.
-    
-    Args:
-        user_id: 사용자 ID
-        case: orchestrator에서 결정한 전략 케이스 (1-4)
-        user_data: CustomerProfile 객체
-        target_brands: 필터링할 브랜드 리스트
-        
-    Returns:
-        추천 결과 dict {product_id, product_name, score, reason} 또는 None
+    내부 추천 엔진을 직접 호출합니다 (체이닝).
     """
-    payload = {
-        "user_id": user_id,
-        "case": case,
-        "target_brand": target_brands,
-        "user_data": user_data.dict() if case > 1 else None
-    }
+    class MockRequest:
+        def __init__(self, user_id, case, target_brand, user_data):
+            self.user_id = user_id
+            self.case = case
+            self.target_brand = target_brand
+            self.user_data = user_data
+
+    request_data = MockRequest(user_id, case, target_brands, user_data)
     
     try:
-        with httpx.Client(timeout=30.0) as client:
-            response = client.post(RECSYS_API_URL, json=payload)
-            response.raise_for_status()
-            # 명시적으로 UTF-8 인코딩 설정
-            response.encoding = 'utf-8'
-            result = response.json()
-            print(f"  [DEBUG] Response keys: {list(result.keys()) if result else 'None'}")
-            print(f"  [DEBUG] Has product_data: {'product_data' in result if result else False}")
-            if result and 'product_data' in result:
-                print(f"  [DEBUG] product_data brand: {result['product_data'].get('brand', 'N/A')}")
-            return result
-    except httpx.HTTPError as e:
-        print(f"❌ RecSys API 호출 실패: {e}")
-        return None
+        result = await get_recommendation(request_data)
+        return result
     except Exception as e:
-        print(f"❌ 예상치 못한 오류: {e}")
+        print(f"❌ 내부 추천 엔진 호출 실패: {e}")
         return None
 
-
-def info_retrieval_node(state: GraphState) -> GraphState:
+async def info_retrieval_node(state: GraphState) -> GraphState:
     """
     Info Retrieval Node
     

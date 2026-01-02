@@ -492,7 +492,7 @@ def save_compliance_history(
 
 
 # ===== LangGraph 노드 함수 =====
-def compliance_check_node(state: GraphState) -> GraphState:
+async def compliance_check_node(state: GraphState) -> GraphState:
     """
     컴플라이언스 검수 노드
     

@@ -6,12 +6,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from api.message import router as message_router
+from api.campaign import router as campaign_router
 
 # FastAPI 앱 생성
 app = FastAPI(
-    title="Blooming CRM API",
-    description="페르소나 기반 초개인화 CRM 메시지 생성 시스템",
-    version="1.0.0",
+    title="Blooming Unified Campaign API",
+    description="페르소나 기반 초개인화 캠페인 (추천 + CRM 메시지) 통합 시스템",
+    version="1.2.0",
 )
 
 # CORS 설정
@@ -24,7 +25,8 @@ app.add_middleware(
 )
 
 # 라우터 등록
-app.include_router(message_router, tags=["Message Generation"])
+app.include_router(campaign_router, tags=["Campaign Integration"])
+app.include_router(message_router, tags=["Legacy: Message Generation"])
 
 
 @app.get("/", tags=["Health"])

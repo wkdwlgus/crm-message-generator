@@ -11,7 +11,8 @@ class GraphState(TypedDict):
     """LangGraph State 정의"""
     user_id: str
     user_data: CustomerProfile
-    strategy: dict
+    intention: str
+    strategy: int  # orchestrator에서 결정한 케이스 (1-4)
     recommended_product_id: str
     product_data: dict
     brand_tone: dict
@@ -24,7 +25,7 @@ class GraphState(TypedDict):
     success: bool  # API 응답용
 
 
-def message_writer_node(state: GraphState) -> GraphState:
+async def message_writer_node(state: GraphState) -> GraphState:
     """
     Message Writer Node
     
@@ -34,6 +35,7 @@ def message_writer_node(state: GraphState) -> GraphState:
     user_data = state["user_data"]
     product_data = state["product_data"]
     brand_tone = state["brand_tone"]
+    intention = state.get("intention", "GENERAL")
     channel = state.get("channel", "APPPUSH")
     retry_count = state.get("retry_count", 0)
     error_reason = state.get("error_reason", "")  # Compliance 실패 이유 가져오기
@@ -90,6 +92,15 @@ def message_writer_node(state: GraphState) -> GraphState:
             tone_style=brand_tone['tone_manner_style'],
             tone_examples=tone_examples
         )
+
+    # [중요] 캠페인 의도(Intention) 반영
+    intention_guides = {
+        "GENERAL": "일상적인 안부와 함께 자연스럽게 상품을 추천하세요.",
+        "EVENT": "현재 진행 중인 특별한 혜택이나 이벤트를 강조하여 구매를 유도하세요.",
+        "WEATHER": "현재 날씨나 계절적 특성을 언급하며 그에 맞는 피부 관리법을 제안하세요."
+    }
+    intention_context = intention_guides.get(intention, intention_guides["GENERAL"])
+    system_prompt += f"\n\n[캠페인 의도]\n{intention_context}"
 
     # 재시도인 경우 Compliance 실패 이유를 프롬프트에 추가
     if retry_count > 0 and error_reason:

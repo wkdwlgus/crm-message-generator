@@ -11,6 +11,7 @@ class GraphState(TypedDict):
     """LangGraph State 정의"""
     user_id: str
     user_data: CustomerProfile
+    intention: str  # 'GENERAL', 'EVENT', 'WEATHER'
     recommended_brand: List[str]  # 추천 브랜드 리스트 (최대 4개)
     strategy: int  # 1: Cold Start, 2: Behavioral, 3: Profile-based, 4: Hybrid
     recommended_product_id: str
@@ -25,25 +26,17 @@ class GraphState(TypedDict):
     success: bool  # API 응답용
 
 
-def orchestrator_node(state: GraphState) -> GraphState:
+async def orchestrator_node(state: GraphState) -> GraphState:
     """
     Orchestrator Node
     
-    고객 프로필을 분석하여 메시지 생성 전략을 수립합니다:
-    - 시나리오 결정 (Case 0-3)
-    - 추천 브랜드 결정
-    - 페르소나 매칭
-    
-    Args:
-        state: LangGraph State
-        
-    Returns:
-        업데이트된 GraphState
+    고객 프로필을 분석하여 메시지 생성 전략을 수립합니다.
     """
     user_data = state["user_data"]
     channel = state.get("channel", "SMS")
+    intention = state.get("intention", "GENERAL")
     
-    # 1. 시나리오 결정 (Case 0-3)
+    # 1. 시나리오 결정 (Case 1-4)
     strategy_case = determine_strategy_case(user_data)
     
     # 2. 추천 브랜드 결정
@@ -53,11 +46,12 @@ def orchestrator_node(state: GraphState) -> GraphState:
     state["strategy"] = strategy_case
     state["recommended_brand"] = recommended_brand
     state["retry_count"] = 0
+    state["success"] = False
     
     print(f"🎯 Orchestrator 결과:")
+    print(f"  - Intention: {intention}")
     print(f"  - Strategy Case: {strategy_case} ({get_strategy_name(strategy_case)})")
     print(f"  - Recommended Brand: {recommended_brand}")
-    # print(f"  - Persona: {persona.name} ({persona.persona_id})")
     
     return state
 
