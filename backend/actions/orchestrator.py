@@ -2,7 +2,13 @@
 Orchestrator Node
 고객 데이터를 분석하고 메시지 생성 전략 수립
 """
-from typing import TypedDict, List
+import json
+import os
+import random
+from pathlib import Path
+from datetime import datetime, timedelta
+from typing import TypedDict, List, Set
+from collections import Counter
 from models.user import CustomerProfile
 from models.persona import Persona
 
@@ -44,11 +50,16 @@ def orchestrator_node(state: GraphState) -> GraphState:
     user_data = state["user_data"]
     channel = state.get("channel", "SMS")
     
-    # 1. 시나리오 결정 (Case 0-3)
-    strategy_case = determine_strategy_case(user_data)
+    # [Mock Data] 최근 이용 브랜드 랜덤 생성 (테스트용)
+    # 실제 user_data 대신 랜덤하게 생성된 브랜드 리스트를 사용하고 싶다면 여기서 활용 가능
+    # 현재 로직에서는 determine_recommended_brand 내부에서 랜덤 추출하므로 
+    # 이 리스트는 로그 출력이나 추후 로직 확장에 사용
+    strategy_case = 1
+    mock_recent_brands = generate_mock_recent_brands(strategy_case)
     
-    # 2. 추천 브랜드 결정
-    recommended_brand = determine_recommended_brand(user_data)
+    # 페르소나 적합도 + 최근 이용 빈도(Mock Data) 기반 랭킹 산정
+    recommended_brand = determine_recommended_brand(strategy_case, mock_recent_brands)
+    
     
     # State 업데이트
     state["strategy"] = strategy_case
@@ -141,80 +152,181 @@ BRAND_AGE_MAPPING = {
 }
 
 
-def determine_recommended_brand(customer: CustomerProfile) -> List[str]:
+def get_recent_brands(user_data: CustomerProfile, days: int = 30) -> Set[str]:
     """
-    고객 데이터를 기반으로 추천 브랜드 리스트를 결정합니다.
-    
-    로직:
-    1. purchase_history에서 마지막 1-2개 브랜드
-    2. cart_items에서 1-2개 브랜드
-    3. 합쳐서 4개면 return, 아니면 연령대별 브랜드 추가
-    
-    Args:
-        customer: 고객 프로필
-        
-    Returns:
-        추천 브랜드 리스트 (최대 4개)
+    최근 N일 이내에 상호작용한(구매, 장바구니, 조회) 브랜드 목록을 추출합니다.
     """
-    brands = set()
+    recent_brands = set()
+    cutoff_date = datetime.now() - timedelta(days=days)
     
-    # 1. 구매 이력에서 최근 1-2개 브랜드
-    if len(customer.purchase_history) > 0:
-        # 날짜 기준 내림차순 정렬 (최근 구매 우선)
-        sorted_history = sorted(
-            customer.purchase_history, 
-            key=lambda x: x.purchase_date, 
-            reverse=True
-        )
-        for item in sorted_history[:2]:
-            brands.add(item.brand)
-            if len(brands) >= 2:
-                break
-    
-    # 2. 장바구니에서 1-2개 브랜드
-    if len(customer.cart_items) > 0 and len(brands) < 4:
-        for item in customer.cart_items[:2]:
-            if item.brand:  # brand 필드가 있을 때만
-                brands.add(item.brand)
-                if len(brands) >= 4:
-                    break
-    
-    # 3. 이미 4개면 반환
-    if len(brands) >= 4:
-        return list(brands)
-    
-    # 4. 부족하면 연령대별 브랜드 추가
-    age_brands = get_brands_for_age(customer.age_group)
-    for brand in age_brands:
-        brands.add(brand)
-        if len(brands) >= 4:
-            break
-    
-    return list(brands)
+    # 1. 구매 이력 확인
+    for item in user_data.purchase_history:
+        try:
+            p_date = datetime.strptime(item.purchase_date, "%Y-%m-%d")
+            if p_date >= cutoff_date:
+                recent_brands.add(item.brand)
+        except ValueError:
+            continue
+            
+    # 2. 장바구니 확인
+    for item in user_data.cart_items:
+        try:
+            # added_at이 있는 경우
+            if hasattr(item, 'added_at'):
+                a_date = datetime.strptime(item.added_at, "%Y-%m-%d")
+                if a_date >= cutoff_date and item.brand:
+                    recent_brands.add(item.brand)
+        except ValueError:
+            continue
+
+    # 3. 최근 본 상품 (날짜 정보가 없으면 최근으로 간주하거나 제외)
+    # 모델 정의상 날짜가 없으므로, 최근 본 상품은 모두 포함시킴 (또는 제외)
+    # 여기서는 최근 본 상품도 관심 브랜드로 포함
+    for item in user_data.recently_viewed_items:
+        if item.brand:
+            recent_brands.add(item.brand)
+            
+    return recent_brands
 
 
-def get_brands_for_age(age_group: str) -> List[str]:
+def generate_mock_recent_brands(personatype: int) -> List[str]:
     """
-    연령대에 맞는 브랜드 리스트 반환
+    사용자의 최근 이용 브랜드 리스트를 가중치 기반 랜덤으로 생성합니다.
     
     Args:
-        age_group: 연령대 (20s, 30s, 40s, 50s+)
+        personatype: 전략 케이스 번호 (1-5)
         
     Returns:
-        해당 연령대에 맞는 브랜드 리스트
+        랜덤하게 생성된 최근 이용 브랜드 리스트
     """
-    # 50s+를 50s로 매핑
-    normalized_age = age_group.replace("+", "")
-    if normalized_age == "50s":
-        # 50s+는 50s, 60s+ 모두 매칭
-        matching_brands = [
-            brand for brand, ages in BRAND_AGE_MAPPING.items()
-            if "50s" in ages or "60s+" in ages
-        ]
-    else:
-        matching_brands = [
-            brand for brand, ages in BRAND_AGE_MAPPING.items()
-            if age_group in ages
-        ]
+    try:
+        # 현재 파일(orchestrator.py)과 같은 디렉토리에 있는 persona_db_v2.json 참조
+        current_dir = Path(r"c:\Users\helen\Desktop\kt cloud tech up\advanced_project\blooming-v1\backend\actions")        
+        json_path = current_dir / "persona_db.json"
+        
+        if not json_path.exists():
+            return []
+            
+        with open(json_path, "r", encoding="utf-8") as f:
+            persona_db = json.load(f)
+            
+        # 1. 전체 브랜드 리스트와 타겟 페르소나 브랜드 식별
+        all_brands = set()
+        target_brands = set()
+        
+        key = str(personatype)
+        
+        for p_id, p_data in persona_db.items():
+            brands = p_data.get("recommended_brands", [])
+            for b in brands:
+                all_brands.add(b)
+                if p_id == key:
+                    target_brands.add(b)
+        
+        all_brands_list = list(all_brands)
+        
+        if not all_brands_list:
+            return []
+            
+        # 2. 가중치 설정
+        weights = []
+        for brand in all_brands_list:
+            if brand in target_brands:
+                weights.append(10) # 타겟 브랜드 가중치
+            else:
+                weights.append(1)  # 그 외 브랜드 가중치
+                
+        # 3. 랜덤 개수 및 브랜드 추출
+        # 1~10개 사이의 브랜드를 랜덤하게 선택
+        count = random.randint(1, 10)
+        recent_brands = random.choices(all_brands_list, weights=weights, k=count)
+        
+        # 중복 허용 (많이 추출된 브랜드 = 많이 이용한 브랜드)
+        # recent_brands = list(dict.fromkeys(recent_brands))
+        
+        print(f"🎲 Mock Recent Brands (Persona {personatype}): {recent_brands}")
+        return recent_brands
+
+    except Exception as e:
+        print(f"❌ Error generating mock recent brands: {e}")
+        return []
+
+
+def determine_recommended_brand(personatype: int, recent_brands: List[str]) -> List[str]:
+    """
+    페르소나 적합도와 최근 이용 빈도를 기반으로 브랜드 랭킹을 산정합니다.
     
-    return matching_brands if matching_brands else ["Laneige"]  # 기본값
+    Scoring Logic:
+    - 페르소나 추천 브랜드: +10점 (Base Score)
+    - 최근 이용 브랜드: +1점 * 이용 횟수 (Frequency Score)
+    
+    Args:
+        personatype: 전략 케이스 번호 (1-5)
+        recent_brands: 최근 이용 브랜드 리스트 (중복 포함, 빈도 계산용)
+        
+    Returns:
+        점수순으로 정렬된 추천 브랜드 리스트
+    """
+    try:
+        # 현재 파일(orchestrator.py)과 같은 디렉토리에 있는 persona_db_v2.json 참조
+        current_dir = Path(r"c:\Users\helen\Desktop\kt cloud tech up\advanced_project\blooming-v1\backend\actions")        
+        json_path = current_dir / "persona_db.json"
+        
+        if not json_path.exists():
+            print(f"⚠️ Warning: Persona DB file not found at {json_path}")
+            return ["이니스프리"]
+            
+        with open(json_path, "r", encoding="utf-8") as f:
+            persona_db = json.load(f)
+            
+        # 1. 타겟 페르소나 브랜드 식별
+        target_brands = set()
+        key = str(personatype)
+        
+        if key in persona_db:
+            target_brands = set(persona_db[key].get("recommended_brands", []))
+        else:
+            print(f"⚠️ Warning: Persona type {personatype} not found in DB")
+            
+        # 2. 최근 이용 브랜드 빈도 계산
+        recent_counts = Counter(recent_brands)
+        
+        # 3. 랭킹 후보군 선정 (페르소나 브랜드 + 최근 이용 브랜드)
+        candidate_brands = target_brands.union(recent_counts.keys())
+        
+        if not candidate_brands:
+            return ["이니스프리"]
+            
+        # 4. 점수 계산
+        scored_brands = []
+        for brand in candidate_brands:
+            score = 0
+            
+            # 페르소나 적합도 점수
+            if brand in target_brands:
+                score += 3
+                
+            # 최근 이용 빈도 점수
+            frequency = recent_counts.get(brand, 0)
+            score += frequency * 1  # 1회당 1점 추가
+            
+            scored_brands.append((brand, score))
+            
+        # 5. 점수 내림차순 정렬
+        scored_brands.sort(key=lambda x: x[1], reverse=True)
+        
+        # 6. 최고 점수 브랜드들 추출 (동점자 처리)
+        if not scored_brands:
+            return ["이니스프리"]
+            
+        max_score = scored_brands[0][1]
+        top_brands = [brand for brand, score in scored_brands if score == max_score]
+        
+        print(f"📊 Brand Ranking (Persona {personatype}): {scored_brands}")
+        print(f"🏆 Top Brands (Score {max_score}): {top_brands}")
+        
+        return top_brands
+
+    except Exception as e:
+        print(f"❌ Error determining recommended brand: {e}")
+        return ["이니스프리"]
