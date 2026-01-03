@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { UserIdInput } from './components/UserIdInput';
 import { ChannelSelector } from './components/ChannelSelector';
 import { MessageDisplay } from './components/MessageDisplay';
 import { LoadingSpinner } from './components/LoadingSpinner';

@@ -2,7 +2,7 @@
  * API Service
  * 백엔드 API 호출 서비스 (실제 DB 연동 버전)
  */
-import type { MessageResponse, ChannelType, CustomerPersona } from '../types/api';
+import type { ChannelType, CustomerPersona } from '../types/api';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 

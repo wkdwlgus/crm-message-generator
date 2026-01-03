@@ -22,8 +22,8 @@ export function MessageDisplay({ message }: MessageDisplayProps) {
 
   const handleCopy = async () => {
     try {
-      // 기존 코드의 필드명인 message_content를 사용합니다.
-      await navigator.clipboard.writeText(message.content || (message as any).message_content);
+      // GeneratedMessage 인터페이스에 content가 추가되었으므로 바로 사용 가능합니다.
+      await navigator.clipboard.writeText(message.content || message.message_content || '');
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -44,7 +44,7 @@ export function MessageDisplay({ message }: MessageDisplayProps) {
         {/* 메시지 본문 영역 */}
         <div className="mt-2 min-h-[120px] bg-gray-50 border-2 border-dashed border-gray-300 p-4">
           <p className="text-sm font-mono leading-relaxed text-black whitespace-pre-wrap">
-            {message.content || (message as any).message_content}
+            {message.content || message.message_content}
           </p>
         </div>
 

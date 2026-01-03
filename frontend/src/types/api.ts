@@ -5,10 +5,11 @@
 
 export interface GeneratedMessage {
   user_id: string;
-  message_content: string;
+  content: string; // 추가: 컴포넌트에서 사용하는 이름
+  message_content?: string; // 하위 호환성 유지
   channel: string;
-  product_id: string;
-  persona_id: string;
+  product_id?: string;
+  persona_id?: string;
   generated_at?: string;
 }
 
