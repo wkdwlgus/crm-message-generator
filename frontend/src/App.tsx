@@ -75,20 +75,6 @@ function App() {
     const fetchCustomers = async () => {
       try {
         const data = await ApiService.getCustomers();
-        setCustomers(data);
-      } catch (err) {
-        console.error("고객 데이터 로딩 실패:", err);
-        // 필요 시 에러 UI 처리 가능
-      }
-    };
-    fetchCustomers();
-  }, []);
-
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const data = await ApiService.getCustomers();
-        // 데이터가 잘 왔는지 콘솔에서 확인
         console.log("✅ 백엔드에서 가져온 고객 목록:", data);
         setCustomers(data);
       } catch (err) {
