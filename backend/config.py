@@ -23,11 +23,13 @@ class Settings(BaseSettings):
     RecSys_API_URL: str = "http://localhost:8001/recommend"
     
     # CORS
-    allowed_origins: str = "http://localhost:5173"
+    allowed_origins: str = "*"
     
     @property
     def allowed_origins_list(self) -> List[str]:
         """CORS allowed origins를 리스트로 변환"""
+        if self.allowed_origins == "*":
+            return ["*"]
         return [origin.strip() for origin in self.allowed_origins.split(",")]
     
     class Config:
