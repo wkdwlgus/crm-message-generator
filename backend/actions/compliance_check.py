@@ -44,6 +44,7 @@ class GraphState(TypedDict):
     violated_rules: List[Dict[str, Any]]
     llm_reasoning: str
     confidence_score: float
+    retrieved_legal_rules: list[Dict[str, Any]]  # 캐싱용: 한 번 검색한 규칙 재사용
 
 # Supabase 클라이언트 (선택적 - Rule DB가 없으면 Mock 사용)
 try:
@@ -427,7 +428,6 @@ def build_compliance_prompt(
 
 **중요**: 명시적 금지 키워드가 없으면 passed: true
 """
-    print("check point 3")
     
     return prompt
 
@@ -452,7 +452,7 @@ def call_llm_judge(prompt: str) -> Dict[str, Any]:
         )
         
         result = json.loads(response.choices[0].message.content)
-        print(f"[LLM 판단 결과!!] {result}")
+        print(f"[LLM 판단 결과] {result}")
         return result
     except Exception as e:
         print(f"[Error] LLM 호출 실패: {e}")
@@ -509,7 +509,6 @@ async def compliance_check_node(state: GraphState) -> GraphState:
     retry_count = state.get("retry_count", 0)
     
     print(f"🔍 [Compliance Check] 검수 시작 (시도 {retry_count + 1}/5)")
-    print(f"  - Message Preview: {message[:100]}...")
     
     # 1. product_data를 product_info와 legal_info로 변환 (로컬 변수, 다른 노드와 공유 안 함)
     product_info = {
@@ -520,15 +519,29 @@ async def compliance_check_node(state: GraphState) -> GraphState:
     }
     
     legal_info = extract_legal_info_from_product(product_data)
-    print(f"  - Product Info: {product_info}")
     
-    # 2. Rule DB에서 관련 규칙 검색
-    relevant_rules = retrieve_relevant_rules_improved(message, top_k=15)
-    print(f"  - Retrieved Rules: {len(relevant_rules)}개 규칙 검색됨")
+    # 2. Rule DB에서 관련 규칙 검색 (첫 방문 시에만, 이후엔 캐시 사용)
+    retrieved_legal_rules = state.get("retrieved_legal_rules", [])
+    
+    if not retrieved_legal_rules:
+        # 첫 방문: DB에서 규칙 검색 후 State에 캐싱
+        relevant_rules = retrieve_relevant_rules_improved(message, top_k=15)
+        
+        # embedding 필드 제거하여 State 크기 최소화 (임베딩은 1536차원 벡터로 ~12KB/규칙)
+        rules_without_embedding = [
+            {k: v for k, v in rule.items() if k != "embedding"}
+            for rule in relevant_rules
+        ]
+        state["retrieved_legal_rules"] = rules_without_embedding
+        
+        print(f"  - Retrieved Rules (첫 조회): {len(relevant_rules)}개 규칙 검색됨")
+    else:
+        # 재시도: 캐시된 규칙 재사용
+        relevant_rules = retrieved_legal_rules
+        print(f"  - Retrieved Rules (캐시 사용): {len(relevant_rules)}개 규칙 재사용")
     
     # 3. LLM 판단 프롬프트 구성
     prompt = build_compliance_prompt(message, product_info, legal_info, relevant_rules)
-    print(f"  - Compliance Prompt 생성 완료, {prompt}")
     
     # 4. OpenAI API 호출
     try:
@@ -556,6 +569,11 @@ async def compliance_check_node(state: GraphState) -> GraphState:
         # 실패 시 재시도 카운트 증가 및 error_reason 업데이트
         if not passed:
             state["retry_count"] = retry_count + 1
+
+            if state["retry_count"] >= settings.max_retry_count:
+                print(f"  ❌ [Compliance Check] 최대 재시도 횟수 도달. 최종 실패 처리.")
+                state["compliance_passed"] = False
+                
             
             # error_reason 업데이트: LLM reasoning + 위반 규칙 요약
             violation_summary = "\n".join([

@@ -38,6 +38,7 @@ class GraphState(TypedDict):
     error: str
     error_reason: str  # Compliance 실패 이유
     success: bool  # API 응답용
+    retrieved_legal_rules: list  # 캐싱용: Compliance 노드에서 한 번 검색한 규칙 재사용
 
 
 async def orchestrator_node(state: GraphState) -> GraphState:

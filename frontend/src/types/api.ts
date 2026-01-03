@@ -13,8 +13,21 @@ export interface GeneratedMessage {
 }
 
 export interface MessageResponse {
-  success: boolean;
-  data: GeneratedMessage;
+  content: string;
+  channel: ChannelType;
+  generated_at?: string;
+  user_id?: string;
+  persona_id?: string;
+}
+
+export interface CustomerPersona {
+  user_id: string;        // 핵심: 메시지 생성 시 보낼 ID
+  name: string;           // 표시용: 이름
+  membership_level: string; // 표시용: 뱃지 (예: GOLD)
+  skin_type?: string[];    // 표시용: 태그 (배열이 아닐 경우를 대비해 ? 처리)
+  keywords?: string[];     // 표시용: 태그
+  preferred_tone?: string; // 표시용: 톤앤매너 설명
+  persona_category?: string; // 표시용: 페르소나 카테고리
 }
 
 export interface ErrorResponse {
@@ -23,4 +36,4 @@ export interface ErrorResponse {
   retry_count?: number;
 }
 
-export type ChannelType = 'SMS' | 'KAKAO' | 'EMAIL';
+export type ChannelType = 'APP PUSH' | 'SMS' | 'KAKAO' | 'EMAIL';

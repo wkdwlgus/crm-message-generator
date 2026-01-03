@@ -5,11 +5,22 @@ GET /message 엔드포인트
 from fastapi import APIRouter, Header, HTTPException, Query
 from models.message import MessageResponse, ErrorResponse
 from services.mock_data import get_mock_customer
+from services.user_service import get_customer_from_db, get_customer_list
 from graph import message_workflow
 from typing import Optional
 
 router = APIRouter()
 
+@router.get(
+    "/customers",
+    summary="고객 목록 조회",
+    description="프론트엔드 페르소나 선택 버튼(P1, P2...)을 위한 고객 리스트 반환"
+)
+async def get_customers_endpoint():
+    """
+    services/user_service.py의 함수를 호출하여 고객 목록을 반환
+    """
+    return get_customer_list()
 
 @router.get(
     "/message",
@@ -24,7 +35,7 @@ router = APIRouter()
 )
 async def generate_message(
     x_user_id: str = Header(..., description="고객 ID"),
-    channel: Optional[str] = Query("SMS", description="메시지 채널 (SMS, KAKAO, EMAIL)"),
+    channel: Optional[str] = Query("SMS", description="메시지 채널 (SMS, KAKAO, EMAIL, APP_PUSH)"),
 ):
     """
     개인화 메시지 생성 API
@@ -40,7 +51,8 @@ async def generate_message(
         HTTPException: 고객 정보를 찾을 수 없거나 메시지 생성 실패 시
     """
     # 1. 고객 데이터 조회
-    customer = get_mock_customer(x_user_id)
+    # customer = get_mock_customer(x_user_id)
+    customer = get_customer_from_db(x_user_id)
     
     if not customer:
         raise HTTPException(

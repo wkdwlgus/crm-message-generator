@@ -24,6 +24,7 @@ class GraphState(TypedDict):
     error: str
     error_reason: str  # Compliance 실패 이유
     success: bool  # API 응답용
+    retrieved_legal_rules: list  # 캐싱용: Compliance 노드에서 한 번 검색한 규칙 재사용
 
 
 async def message_writer_node(state: GraphState) -> GraphState:
@@ -62,7 +63,6 @@ async def message_writer_node(state: GraphState) -> GraphState:
         crm_guidelines = {"brands": {}, "groups": {}}
 
     brand_name = product_data['brand']
-    print("check point 1 - brand_name:", brand_name)
     
     # Dynamic System Prompt Construction
     if brand_name in crm_guidelines["brands"]:
@@ -118,13 +118,14 @@ async def message_writer_node(state: GraphState) -> GraphState:
 - 대체 가능한 합법적 표현을 사용하세요
 - 화장품법 준수를 최우선으로 하세요
 """
-        print(f"🔄 [Retry {retry_count}] 이전 거부 이유를 프롬프트에 포함시켰습니다.")
+    
 
     # 2. 채널 제한 텍스트 결정 (Restored)
     channel_limits = {
-        "APPPUSH": "50자 이내",
-        "KAKAO": "1000자 이내 (첫 문장 30자 이내 권장)",
-        "EMAIL": "제한 없음 (단, 핵심 메시지는 첫 200자 이내)",
+        "APP_PUSH": "50자 이내 (제목 1줄 + 본문 1줄, 이모지 포함 필수)",
+        "SMS": "45자 이내 (줄바꿈 없이 핵심만 2문장으로)",
+        "KAKAO": "1000자 이내 (첫 문장은 고객 이름과 인사로 시작, 줄바꿈 활용)",
+        "EMAIL": "제한 없음 (제목/본문 구분, 서론-본론-결론 구조)"
     }
     limit = channel_limits.get(channel, "적절한 길이")
     

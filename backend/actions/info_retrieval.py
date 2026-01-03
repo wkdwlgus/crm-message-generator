@@ -27,6 +27,7 @@ class GraphState(TypedDict):
     error: str
     error_reason: str  # Compliance 실패 이유
     success: bool  # API 응답용
+    retrieved_legal_rules: list  # 캐싱용: Compliance 노드에서 한 번 검색한 규칙 재사용
 
 
 async def call_internal_recsys(
@@ -95,6 +96,9 @@ async def info_retrieval_node(state: GraphState) -> GraphState:
         # RecSys API에서 받은 product_data를 바로 사용
         state["recommended_product_id"] = recommendation['product_id']
         state["product_data"] = recommendation['product_data']
+        print(f"  🛍️ 상품 데이터 로드 완료, {recommendation['product_data']['brand']}")
+        state["brand_tone"] = recommendation['product_data']['brand']
+        print(f"  🎨 브랜드 톤앤매너 로드: {state['brand_tone']}")
         
     else:
         # RecSys 실패 시 기존 Mock 로직 사용
