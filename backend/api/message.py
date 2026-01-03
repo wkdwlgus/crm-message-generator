@@ -78,7 +78,7 @@ async def generate_message(
             "success": False,  # 초기값
         }
         
-        result = message_workflow.invoke(initial_state)
+        result = await message_workflow.ainvoke(initial_state)
         
         # 3. 결과 검증
         if result.get("success", False):

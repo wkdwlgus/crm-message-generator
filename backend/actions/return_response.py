@@ -5,7 +5,7 @@ Return Response Node
 import json
 import os
 import random
-from typing import TypedDict
+from typing import TypedDict, Optional
 from models.user import CustomerProfile
 from models.message import GeneratedMessage, MessageResponse
 

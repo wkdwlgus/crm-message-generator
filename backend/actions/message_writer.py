@@ -2,7 +2,7 @@
 Message Writer Node
 OpenAI GPT-5 API를 사용한 메시지 생성
 """
-from typing import TypedDict
+from typing import TypedDict, Optional, List
 from services.llm_client import llm_client
 from utils.prompt_loader import load_prompt_template
 from models.user import CustomerProfile

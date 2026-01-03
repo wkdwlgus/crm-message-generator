@@ -13,7 +13,7 @@ State 해결 방법:
 - compliance_check_node 내부에서 product_data를 product_info/legal_info로 변환 (로컬 변수)
 - 다른 노드와 공유하지 않는 필드는 로컬 변수로만 사용
 """
-from typing import TypedDict, List, Dict, Any
+from typing import TypedDict, List, Dict, Any, Optional
 from models.user import CustomerProfile
 from openai import OpenAI
 from supabase import create_client, Client

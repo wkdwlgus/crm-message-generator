@@ -83,7 +83,7 @@ async def generate_campaign(
         }
         
         # 워크플로우 실행
-        result = message_workflow.invoke(initial_state)
+        result = await message_workflow.ainvoke(initial_state)
         
         # 3. 결과 반환
         if result.get("success", False):
