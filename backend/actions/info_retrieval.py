@@ -1,4 +1,3 @@
-```
 """
 Info Retrieval Node
 필요한 정보 수집 (상품 추천, 브랜드 톤앤매너)
@@ -7,12 +6,14 @@ from typing import TypedDict, Optional, List
 from services.recsys.engine import get_recommendation
 from services.recsys.models import CustomerProfile as RecsysCustomerProfile
 from models.user import CustomerProfile
+from services.mock_data import recommend_product_for_customer
 
 
 class GraphState(TypedDict):
     """LangGraph State 정의"""
     user_id: str
     user_data: CustomerProfile
+    persona_id: Optional[str]
     intention: str
     recommended_brand: List[str]  # orchestrator에서 결정된 추천 브랜드
     strategy: int  # orchestrator에서 결정된 케이스 (1-4)
@@ -75,11 +76,14 @@ async def info_retrieval_node(state: GraphState) -> GraphState:
     print(f"  - Strategy Case: {strategy_case}")
     print(f"  - Target Brands: {target_brands}")
     
-    # 1. RecSys API 호출 (동기 방식)
-    recommendation = call_recsys_api(
+    # 1. RecSys 내부 엔진 호출 (체이닝)
+    # Recsys 모델로 변환 (데이터 구조 동기화)
+    recsys_user_data = RecsysCustomerProfile(**user_data.dict())
+    
+    recommendation = await call_internal_recsys(
         user_id=state["user_id"],
-        case=strategy_case,  # orchestrator의 case 사용
-        user_data=user_data,
+        case=strategy_case,
+        user_data=recsys_user_data,
         target_brands=target_brands
     )
     

@@ -11,6 +11,7 @@ class GraphState(TypedDict):
     """LangGraph State 정의"""
     user_id: str
     user_data: CustomerProfile
+    persona_id: Optional[str]
     intention: str
     strategy: int
     recommended_product_id: str

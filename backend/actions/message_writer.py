@@ -11,6 +11,7 @@ class GraphState(TypedDict):
     """LangGraph State 정의"""
     user_id: str
     user_data: CustomerProfile
+    persona_id: Optional[str]
     intention: str
     strategy: int  # orchestrator에서 결정한 케이스 (1-4)
     recommended_product_id: str
@@ -129,11 +130,26 @@ async def message_writer_node(state: GraphState) -> GraphState:
     
     # 3. 전략 변수 설정 (Orchestrator int 입력 대응)
     strategy_input = state["strategy"]
+    persona_id = state.get("persona_id")
     
     # 기본값 설정
     persona_name = "Trend Setter"
     communication_tone = "Casual & Trendy"
     message_goal = "Product Recommendation"
+
+    # 페르소나 DB 로드 (필요시)
+    if persona_id:
+        persona_db_path = os.path.join(os.path.dirname(__file__), "../services/recsys/persona_db.json")
+        try:
+            with open(persona_db_path, "r", encoding="utf-8") as f:
+                persona_db = json.load(f)
+                if persona_id in persona_db:
+                    p_data = persona_db[persona_id]
+                    persona_name = p_data.get("persona_name", persona_name)
+                    communication_tone = p_data.get("tone", communication_tone)
+                    # 키워드 등을 목표에 추가 반영 가능
+        except Exception:
+            pass
     
     if isinstance(strategy_input, int):
         # Orchestrator가 Case(int)를 반환하는 경우 Goal 매핑

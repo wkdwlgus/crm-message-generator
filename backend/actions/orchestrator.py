@@ -1,16 +1,30 @@
-"""
-Orchestrator Node
-고객 데이터를 분석하고 메시지 생성 전략 수립
-"""
-from typing import TypedDict, List
+import json
+import os
+from typing import TypedDict, List, Optional
 from models.user import CustomerProfile
 from models.persona import Persona
+
+
+# 페르소나 DB 로드
+PERSONA_DB_PATH = os.path.join(os.path.dirname(__file__), "../services/recsys/persona_db.json")
+
+def load_persona_db():
+    try:
+        if os.path.exists(PERSONA_DB_PATH):
+            with open(PERSONA_DB_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"⚠️ 페르소나 DB 로드 실패: {e}")
+    return {}
+
+PERSONA_DB = load_persona_db()
 
 
 class GraphState(TypedDict):
     """LangGraph State 정의"""
     user_id: str
     user_data: CustomerProfile
+    persona_id: Optional[str]  # 프론트엔드에서 선택된 페르소나 ID
     intention: str  # 'GENERAL', 'EVENT', 'WEATHER'
     recommended_brand: List[str]  # 추천 브랜드 리스트 (최대 4개)
     strategy: int  # 1: Cold Start, 2: Behavioral, 3: Profile-based, 4: Hybrid
@@ -30,17 +44,19 @@ async def orchestrator_node(state: GraphState) -> GraphState:
     """
     Orchestrator Node
     
-    고객 프로필을 분석하여 메시지 생성 전략을 수립합니다.
+    고객 프로필과 선택된 페르소나를 분석하여 메시지 생성 전략을 수립합니다.
     """
     user_data = state["user_data"]
+    persona_id = state.get("persona_id")
     channel = state.get("channel", "SMS")
     intention = state.get("intention", "GENERAL")
     
     # 1. 시나리오 결정 (Case 1-4)
-    strategy_case = determine_strategy_case(user_data)
+    # 페르소나가 선택되었거나 뷰티 프로필이 있으면 Case 3(프로필 기반) 이상으로 설정
+    strategy_case = determine_strategy_case(user_data, persona_id)
     
-    # 2. 추천 브랜드 결정
-    recommended_brand = determine_recommended_brand(user_data)
+    # 2. 추천 브랜드 결정 (페르소나 기반 혹은 유저 데이터 기반)
+    recommended_brand = determine_recommended_brand(user_data, persona_id)
     
     # State 업데이트
     state["strategy"] = strategy_case
@@ -49,6 +65,7 @@ async def orchestrator_node(state: GraphState) -> GraphState:
     state["success"] = False
     
     print(f"🎯 Orchestrator 결과:")
+    print(f"  - Persona ID: {persona_id}")
     print(f"  - Intention: {intention}")
     print(f"  - Strategy Case: {strategy_case} ({get_strategy_name(strategy_case)})")
     print(f"  - Recommended Brand: {recommended_brand}")
@@ -67,21 +84,29 @@ def get_strategy_name(case: int) -> str:
     return names.get(case, "Unknown")
 
 
-def determine_strategy_case(customer: CustomerProfile) -> int:
+def determine_strategy_case(customer: CustomerProfile, persona_id: Optional[str] = None) -> int:
     """
     고객 데이터를 분석하여 추천 전략 케이스를 결정합니다.
     
     Case 1 (Cold Start): 데이터 전무 - 베스트셀러 추천
     Case 2 (Behavioral): 과거/실시간 데이터만 존재 - Item-to-Item CF
-    Case 3 (Profile-based): 뷰티 프로필만 존재 - Content-based Filtering
+    Case 3 (Profile-based): 뷰티 프로필 또는 페르소나 선택 - Content-based Filtering
     Case 4 (Hybrid): 모든 데이터 보유 - 재구매 + 프로필 + 행동 데이터
     
     Args:
         customer: 고객 프로필
+        persona_id: 선택된 페르소나 ID
         
     Returns:
         전략 케이스 번호 (1-4)
     """
+    # 페르소나가 선택되었다면 강제로 Case 3 이상으로 설정
+    if persona_id:
+        # 구매 이력이 충분하면 Hybrid(4), 아니면 Profile-based(3)
+        if len(customer.purchase_history) >= 3:
+            return 4
+        return 3
+
     # 구매 이력 확인
     has_purchase_history = len(customer.purchase_history) > 0
     purchase_count = len(customer.purchase_history)
@@ -134,24 +159,34 @@ BRAND_AGE_MAPPING = {
 }
 
 
-def determine_recommended_brand(customer: CustomerProfile) -> List[str]:
+def determine_recommended_brand(customer: CustomerProfile, persona_id: Optional[str] = None) -> List[str]:
     """
     고객 데이터를 기반으로 추천 브랜드 리스트를 결정합니다.
     
     로직:
-    1. purchase_history에서 마지막 1-2개 브랜드
-    2. cart_items에서 1-2개 브랜드
-    3. 합쳐서 4개면 return, 아니면 연령대별 브랜드 추가
+    1. persona_id가 있으면 persona_db에서 브랜드 리스트 가져옴 (최우선)
+    2. purchase_history에서 마지막 1-2개 브랜드
+    3. cart_items에서 1-2개 브랜드
+    4. 합쳐서 4개면 return, 아니면 연령대별 브랜드 추가
     
     Args:
         customer: 고객 프로필
+        persona_id: 선택된 페르소나 ID
         
     Returns:
         추천 브랜드 리스트 (최대 4개)
     """
     brands = set()
     
-    # 1. 구매 이력에서 최근 1-2개 브랜드
+    # 1. 페르소나 기반 브랜드 추천 (최우선)
+    if persona_id and persona_id in PERSONA_DB:
+        persona_brands = PERSONA_DB[persona_id].get("recommended_brands", [])
+        for brand in persona_brands:
+            brands.add(brand)
+            if len(brands) >= 4:
+                return list(brands)
+
+    # 2. 구매 이력에서 최근 1-2개 브랜드
     if len(customer.purchase_history) > 0:
         # 날짜 기준 내림차순 정렬 (최근 구매 우선)
         sorted_history = sorted(
