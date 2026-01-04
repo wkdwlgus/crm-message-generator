@@ -13,7 +13,7 @@ interface ChannelSelectorProps {
 export function ChannelSelector({ selected, onSelect, disabled = false }: ChannelSelectorProps) {
   // 아이콘과 라벨 설정
   const channels: { id: ChannelType; label: string; icon: string }[] = [
-    { id: 'APP PUSH', label: ' APP PUSH', icon: '📱' },
+    { id: 'APP_PUSH', label: ' APP_PUSH', icon: '📱' },
     { id: 'SMS', label: ' SMS', icon: '💬' },
     { id: 'KAKAO', label: ' KAKAO', icon: '💛' },
     { id: 'EMAIL', label: ' EMAIL', icon: '📧' },
