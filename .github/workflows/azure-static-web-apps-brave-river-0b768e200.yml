@@ -51,7 +51,7 @@ jobs:
           github_id_token: ${{ steps.idtoken.outputs.result }}
           ###### End of Repository/Build Configurations ######
         env: # 추가: 빌드 시 환경 변수 주입
-          VITE_API_BASE_URL: https://blooming-eggbd4fzc4ayc0hs.eastasia-01.azurewebsites.net
+          VITE_API_BASE_URL: https://blooming-beta-bcffefbqevh8fmgn.koreasouth-01.azurewebsites.net
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
