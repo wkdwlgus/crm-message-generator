@@ -23,15 +23,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: backend/
-          include-hidden-files: true
+          path: backend/ # backend 폴더 '안'의 내용물만 업로드됨 (requirements.txt가 루트에 위치)
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
     permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
+      id-token: write
+      contents: read
 
     steps:
       - name: Download artifact from build job
@@ -50,6 +49,6 @@ jobs:
         uses: azure/webapps-deploy@v3
         id: deploy-to-webapp
         with:
-          app-name: 'blooming'
+          app-name: 'blooming-beta' # 신규 서버 이름으로 변경
           slot-name: 'Production'
           
