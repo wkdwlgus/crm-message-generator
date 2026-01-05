@@ -1,5 +1,10 @@
+"""
+Customer Profile 관련 Pydantic 모델
+고객 프로필 데이터 구조 정의
+"""
 from pydantic import BaseModel, Field
 from typing import List, Optional
+
 
 class LastPurchase(BaseModel):
     """마지막 구매 정보"""
