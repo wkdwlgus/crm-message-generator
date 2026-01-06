@@ -51,7 +51,7 @@ class Product(BaseModel):
         json_schema_extra = {
             "example": {
                 "product_id": "11204234",
-                "brand": "Hera",
+                "brand": "헤라",
                 "name": "실키 스테이 파운데이션 30g",
                 "category": {
                     "major": "메이크업",

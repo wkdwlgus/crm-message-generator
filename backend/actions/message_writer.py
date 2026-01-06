@@ -11,7 +11,6 @@ class GraphState(TypedDict):
     """LangGraph State 정의"""
     user_id: str
     user_data: CustomerProfile
-    strategy: dict
     recommended_product_id: str
     product_data: dict
     brand_tone: dict
@@ -20,6 +19,12 @@ class GraphState(TypedDict):
     compliance_passed: bool
     retry_count: int
     error: str
+    error_reason: str  # Compliance 실패 이유
+    success: bool  # API 응답용
+    retrieved_legal_rules: list  # 캐싱용: Compliance 노드에서 한 번 검색한 규칙 재사용
+    # Optional inputs from Orchestrator that might be used here
+    crm_reason: str
+    target_persona: str
 
 
 def message_writer_node(state: GraphState) -> GraphState:
@@ -28,7 +33,6 @@ def message_writer_node(state: GraphState) -> GraphState:
     
     OpenAI GPT API를 호출하여 개인화된 메시지를 생성합니다.
     """
-    strategy = state["strategy"]
     user_data = state["user_data"]
     product_data = state["product_data"]
     brand_tone = state["brand_tone"]

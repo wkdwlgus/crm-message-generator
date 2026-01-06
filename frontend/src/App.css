@@ -1,44 +1,58 @@
 @import "tailwindcss";
 
-#root {
-  max-width: 1280px;
+/* 1. 기본 레이아웃 틀 잡기 */
+.app-container {
+  width: 100%;
+  max-width: 1200px; /* 너무 옆으로 퍼지지 않게 */
   margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  padding: 2rem 1rem; /* 위아래 2rem, 좌우 1rem */
+  box-sizing: border-box;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+/* 2. 헤더 영역 */
+.app-header {
+  margin-bottom: 2rem;
+  text-align: left; /* 왼쪽 정렬로 변경 */
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* 3. 메인 그리드 레이아웃 (핵심!) */
+.main-layout {
+  display: grid;
+  gap: 1.5rem; /* 컴포넌트 사이의 간격 */
+  grid-template-columns: 1fr; /* 모바일에서는 1열 */
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+/* 4. 웹 브라우저(lg 사이즈 이상)일 때의 설정 */
+@media (min-width: 1024px) {
+  .main-layout {
+    grid-template-columns: 380px 1fr; 
+    align-items: start; 
   }
 }
 
-.card {
-  padding: 2em;
+/* 폰트가 도트체가 아니라면 구글 폰트 등에서 'Press Start 2P' 같은 폰트를 쓰면 더 완벽합니다 */
+
+.glass-card {
+  background: white;
+  border: 3px solid #000000;
+  border-radius: 4px; /* 찰리 스타일은 너무 둥글기보다 약간 각진 게 어울립니다 */
+  padding: 1.5rem;
+  box-shadow: 6px 6px 0px 0px #000000; /* 검정색 오프셋 그림자 */
 }
 
-.read-the-docs {
-  color: #888;
+button {
+  border: 2px solid #000000 !important;
+  box-shadow: 2px 2px 0px 0px #000000;
+  font-family: inherit;
+  font-weight: bold;
+}
+
+button:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px 0px #000000;
+}
+
+button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0px 0px #000000;
 }

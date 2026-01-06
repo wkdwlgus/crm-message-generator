@@ -5,13 +5,15 @@ Info Retrieval Node
 from typing import TypedDict
 from services.mock_data import get_mock_product, recommend_product_for_customer
 from models.user import CustomerProfile
+import httpx
+from config import settings
 
 
 class GraphState(TypedDict):
     """LangGraph State 정의"""
     user_id: str
     user_data: CustomerProfile
-    strategy: dict
+    recommended_brand: str  # orchestrator에서 결정된 추천 브랜드
     recommended_product_id: str
     product_data: dict
     brand_tone: dict
@@ -20,6 +22,9 @@ class GraphState(TypedDict):
     compliance_passed: bool
     retry_count: int
     error: str
+    error_reason: str  # Compliance 실패 이유
+    success: bool  # API 응답용
+    retrieved_legal_rules: list  # 캐싱용: Compliance 노드에서 한 번 검색한 규칙 재사용
 
 
 def info_retrieval_node(state: GraphState) -> GraphState:
@@ -27,7 +32,7 @@ def info_retrieval_node(state: GraphState) -> GraphState:
     Info Retrieval Node
     
     메시지 생성에 필요한 정보를 수집합니다:
-    - 추천 상품 정보
+    - 추천 상품 정보 (RecSys API 호출)
     - 브랜드 톤앤매너
     
     Args:

@@ -6,11 +6,22 @@ from fastapi import APIRouter, Header, HTTPException, Query
 from models.message import MessageResponse, ErrorResponse
 from services.supabase_client import supabase_client
 from services.mock_data import get_mock_customer
+from services.user_service import get_customer_from_db, get_customer_list
 from graph import message_workflow
 from typing import Optional
 
 router = APIRouter()
 
+@router.get(
+    "/customers",
+    summary="고객 목록 조회",
+    description="프론트엔드 페르소나 선택 버튼(P1, P2...)을 위한 고객 리스트 반환"
+)
+async def get_customers_endpoint():
+    """
+    services/user_service.py의 함수를 호출하여 고객 목록을 반환
+    """
+    return get_customer_list()
 
 @router.get(
     "/message",
@@ -31,8 +42,11 @@ async def generate_message(
     개인화 메시지 생성 API
     
     Args:
-        x_user_id: Header에서 추출한 고객 ID
+        x_user_id: Header에서 추출한 고객 ID (기본값: U001 - 테스트용)
         channel: 메시지 채널 (기본값: SMS)
+        reason: CRM 발송 목적 (기본값: 신제품 출시 이벤트)
+        brand: 특정 브랜드 지정 시 (기본값: 이니스프리)
+        persona: 특정 페르소나 지정 시 (기본값: P1)
         
     Returns:
         MessageResponse: 생성된 메시지 응답
@@ -105,7 +119,12 @@ async def generate_message(
             "user_id": x_user_id,
             "user_data": customer,
             "channel": channel,
-            "strategy": {},
+            
+            # [추가] 프론트엔드 입력값
+            "crm_reason": reason or "",
+            "weather_detail": weather_detail or "",  # 추가됨
+            "target_brand": brand or "",
+            "target_persona": persona or "",
             "recommended_product_id": "",
             "product_data": {},
             "brand_tone": {},
@@ -113,13 +132,20 @@ async def generate_message(
             "compliance_passed": False,
             "retry_count": 0,
             "error": "",
+            "error_reason": "",  # Compliance 실패 이유
+            "success": False,  # 초기값
         }
         
         result = message_workflow.invoke(initial_state)
         
         # 3. 결과 검증
         if result.get("success", False):
-            return result
+            # MessageResponse 모델로 변환하여 반환
+            return MessageResponse(
+                message=result["message"],
+                user=result["user_id"],
+                method=result["channel"]
+            )
         else:
             # 에러 응답
             raise HTTPException(
@@ -128,7 +154,11 @@ async def generate_message(
             )
     
     except Exception as e:
+        print(f"❌ 예외 발생: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=500,
             detail=f"메시지 생성 중 오류 발생: {str(e)}"
         )
+

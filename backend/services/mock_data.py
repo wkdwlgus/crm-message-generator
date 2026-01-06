@@ -33,12 +33,12 @@ MOCK_CUSTOMERS = {
         ),
         purchase_history=[
             PurchaseHistoryItem(
-                brand="Sulwhasoo",
+                brand="설화수",
                 category="Serum",
                 purchase_date="2024-10-01"
             ),
             PurchaseHistoryItem(
-                brand="Hera",
+                brand="헤라",
                 category="Lip",
                 purchase_date="2024-08-15"
             )
@@ -59,7 +59,10 @@ MOCK_CUSTOMERS = {
             last_visit_category="Eye Cream"
         ),
         cart_items=[],
-        recently_viewed_items=["설화수 자음생 크림", "헤라 센슈얼 파우더 매트"]
+        recently_viewed_items=[
+            {"id": "SW-CREAM-001", "name": "설화수 자음생 크림", "brand": "설화수"},
+            {"id": "HR-POWDER-01", "name": "헤라 센슈얼 파우더 매트", "brand": "헤라"}
+        ]
     ),
     "user_67890": CustomerProfile(
         user_id="user_67890",
@@ -82,7 +85,7 @@ MOCK_CUSTOMERS = {
         ),
         purchase_history=[
             PurchaseHistoryItem(
-                brand="Hera",
+                brand="헤라",
                 category="Foundation",
                 purchase_date="2024-09-15"
             )
@@ -103,7 +106,11 @@ MOCK_CUSTOMERS = {
             last_visit_category="Makeup"
         ),
         cart_items=[],
-        recently_viewed_items=["헤라 립스틱", "라네즈 워터 뱅크"]
+        recently_viewed_items=[
+            # "헤라 립스틱", "라네즈 워터 뱅크"
+            {"id": "HR-LIPSTICK-01", "name": "헤라 센슈얼 립스틱", "brand": "Hera"},
+            {"id": "LZ-WATERBANK-01", "name": "라네즈 워터 뱅크 모이스처 크림", "brand": "Laneige"}
+            ]
     )
 }
 
@@ -137,7 +144,7 @@ MOCK_PRODUCTS = {
     ),
     "HR-CUSHION-02": Product(
         product_id="HR-CUSHION-02",
-        brand="Hera",
+        brand="헤라",
         name="헤라 블랙 쿠션 SPF34 PA++",
         category=ProductCategory(
             major="메이크업",
@@ -162,7 +169,7 @@ MOCK_PRODUCTS = {
     ),
     "HR-FOUNDATION-01": Product(
         product_id="HR-FOUNDATION-01",
-        brand="Hera",
+        brand="헤라",
         name="헤라 실키 스테이 파운데이션 30g",
         category=ProductCategory(
             major="메이크업",

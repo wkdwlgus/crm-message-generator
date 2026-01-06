@@ -1,7 +1,8 @@
 /**
  * MessageDisplay Component
- * 생성된 메시지 표시 컴포넌트
+ * Phase 7: 복사 기능 + 찰리 픽셀 스타일 적용
  */
+import { useState } from 'react';
 import type { GeneratedMessage } from '../types/api';
 
 interface MessageDisplayProps {
@@ -9,57 +10,70 @@ interface MessageDisplayProps {
 }
 
 export function MessageDisplay({ message }: MessageDisplayProps) {
+  const [copied, setCopied] = useState(false);
+
+  // 채널별 아이콘 설정 (Phase 6에서 확장한 채널 대응)
   const channelIcons: Record<string, string> = {
-    SMS: '📱',
-    KAKAO: '💬',
+    APP_PUSH: '📱',
+    SMS: '💬',
+    KAKAO: '💛',
     EMAIL: '📧',
   };
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return new Date().toLocaleString('ko-KR');
-    return new Date(dateString).toLocaleString('ko-KR');
+  const handleCopy = async () => {
+    try {
+      // 기존 코드의 필드명인 message_content를 사용합니다.
+      await navigator.clipboard.writeText(message.content || (message as any).message_content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('복사 실패:', err);
+    }
   };
 
   return (
-    <div className="w-full max-w-2xl bg-white rounded-xl shadow-lg p-6 space-y-4">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between pb-4 border-b">
-        <div className="flex items-center gap-2">
-          <span className="text-3xl">{channelIcons[message.channel]}</span>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-800">
-              생성된 메시지
-            </h3>
-            <p className="text-sm text-gray-500">
-              {message.channel} · {formatDate(message.generated_at)}
-            </p>
+    <div className="w-full space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* 픽셀 스타일 메시지 카드 */}
+      <div className="relative p-6 border-[3px] border-black bg-white shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+        
+        {/* 상단 태그: 채널 표시 */}
+        <div className="absolute -top-4 left-4 bg-black text-white px-3 py-1 text-[10px] font-black uppercase tracking-tighter border-2 border-black">
+          {channelIcons[message.channel] || '✨'} {message.channel}
+        </div>
+
+        {/* 메시지 본문 영역 */}
+        <div className="mt-2 min-h-[120px] bg-gray-50 border-2 border-dashed border-gray-300 p-4">
+          <p className="text-sm font-mono leading-relaxed text-black whitespace-pre-wrap">
+            {message.content || (message as any).message_content}
+          </p>
+        </div>
+
+        {/* 하단 메타 정보 (고객 ID, 페르소나 등) */}
+        <div className="mt-4 flex flex-wrap gap-4 text-[10px] font-bold text-gray-500 border-t-2 border-black pt-4">
+          <div className="flex flex-col">
+            <span className="text-black uppercase">Target User</span>
+            <span>{message.user_id || 'UNKNOWN'}</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-black uppercase">Persona ID</span>
+            <span>{message.persona_id || 'N/A'}</span>
           </div>
         </div>
-        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-          ✓ 법규 준수
-        </span>
-      </div>
 
-      {/* 메시지 내용 */}
-      <div className="bg-gray-50 rounded-lg p-4">
-        <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">
-          {message.message_content}
-        </p>
-      </div>
-
-      {/* 메타데이터 */}
-      <div className="grid grid-cols-3 gap-4 pt-4 border-t">
-        <div>
-          <p className="text-xs text-gray-500 mb-1">고객 ID</p>
-          <p className="text-sm font-medium text-gray-700">{message.user_id}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-500 mb-1">페르소나</p>
-          <p className="text-sm font-medium text-gray-700">{message.persona_id}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-500 mb-1">추천 상품</p>
-          <p className="text-sm font-medium text-gray-700">{message.product_id}</p>
+        {/* 복사 버튼: 찰리 스타일 노란색 버튼 */}
+        <div className="mt-6 flex justify-end">
+          <button
+            onClick={handleCopy}
+            className={`
+              px-6 py-2 border-[3px] border-black font-black text-xs transition-all
+              ${copied 
+                ? 'bg-green-400 translate-x-1 translate-y-1 shadow-none' 
+                : 'bg-yellow-300 hover:bg-yellow-400 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1'
+              }
+            `}
+          >
+            {copied ? '✓ COPIED!' : 'COPY MESSAGE'}
+          </button>
         </div>
       </div>
     </div>

@@ -9,9 +9,25 @@ Thumbs.db
 .env.local
 .env.*.local
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *.swn
+
+RecSys/.env
+RecSys/__pycache__/
+RecSys/venv/
+RecSys/.vscode/
+
+
+backend/.env
