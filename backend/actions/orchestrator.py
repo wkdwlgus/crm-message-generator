@@ -17,8 +17,12 @@ class GraphState(TypedDict):
     """LangGraph State 정의"""
     user_id: str
     user_data: CustomerProfile
-    recommended_brand: List[str]  # 추천 브랜드 리스트 (최대 4개)
-    strategy: int  # 1: Cold Start, 2: Behavioral, 3: Profile-based, 4: Hybrid
+    # [입력값] 프론트엔드/API에서 전달된 값
+    crm_reason: str = ""       # CRM 발송 이유 (예: 날씨, 할인행사, 일반홍보)
+    weather_detail: str = ""   # 날씨 상세 (crm_reason이 '날씨'일 때 사용. 예: 폭염 주의보, 장마철 습기)
+    target_brand: str = ""     # 선택된 브랜드 (없으면 빈 문자열)
+    target_persona: str = ""   # 선택된 페르소나 (예: Persona_1)
+    recommended_brand: str  # 추천 브랜드 
     recommended_product_id: str
     product_data: dict
     brand_tone: dict
@@ -48,108 +52,37 @@ def orchestrator_node(state: GraphState) -> GraphState:
         업데이트된 GraphState
     """
     user_data = state["user_data"]
-    channel = state.get("channel", "SMS")
+    channel = state["channel"]
+    target_brand = state.get("target_brand", "")
+    target_persona = state["target_persona"]
     
+    crm_reason = state.get("crm_reason", "")
+    
+    # [로깅] 발송 의도 확인
+    print(f"📋 CRM Reason: {crm_reason}")
+    if crm_reason == "날씨":
+        print(f"  - Detail: {state.get('weather_detail', 'N/A')}")
+
     # [Mock Data] 최근 이용 브랜드 랜덤 생성 (테스트용)
     # 실제 user_data 대신 랜덤하게 생성된 브랜드 리스트를 사용하고 싶다면 여기서 활용 가능
     # 현재 로직에서는 determine_recommended_brand 내부에서 랜덤 추출하므로 
     # 이 리스트는 로그 출력이나 추후 로직 확장에 사용
-    strategy_case = 1
-    mock_recent_brands = generate_mock_recent_brands(strategy_case)
-    
-    # 페르소나 적합도 + 최근 이용 빈도(Mock Data) 기반 랭킹 산정
-    recommended_brand = determine_recommended_brand(strategy_case, mock_recent_brands)
-    
+    if target_brand=="":
+        mock_recent_brands = generate_mock_recent_brands(target_persona)
+        # 페르소나 적합도 + 최근 이용 빈도(Mock Data) 기반 랭킹 산정
+        recommended_brand = determine_recommended_brand(target_persona, mock_recent_brands)
+    else:
+        recommended_brand = [target_brand]
     
     # State 업데이트
-    state["strategy"] = strategy_case
     state["recommended_brand"] = recommended_brand
     state["retry_count"] = 0
     
     print(f"🎯 Orchestrator 결과:")
-    print(f"  - Strategy Case: {strategy_case} ({get_strategy_name(strategy_case)})")
     print(f"  - Recommended Brand: {recommended_brand}")
     # print(f"  - Persona: {persona.name} ({persona.persona_id})")
     
     return state
-
-
-def get_strategy_name(case: int) -> str:
-    """전략 케이스 이름 반환"""
-    names = {
-        1: "Cold Start (베스트셀러)",
-        2: "Behavioral (행동 기반)",
-        3: "Profile-based (프로필 기반)",
-        4: "Hybrid (종합 분석)"
-    }
-    return names.get(case, "Unknown")
-
-
-def determine_strategy_case(customer: CustomerProfile) -> int:
-    """
-    고객 데이터를 분석하여 추천 전략 케이스를 결정합니다.
-    
-    Case 1 (Cold Start): 데이터 전무 - 베스트셀러 추천
-    Case 2 (Behavioral): 과거/실시간 데이터만 존재 - Item-to-Item CF
-    Case 3 (Profile-based): 뷰티 프로필만 존재 - Content-based Filtering
-    Case 4 (Hybrid): 모든 데이터 보유 - 재구매 + 프로필 + 행동 데이터
-    
-    Args:
-        customer: 고객 프로필
-        
-    Returns:
-        전략 케이스 번호 (1-4)
-    """
-    # 구매 이력 확인
-    has_purchase_history = len(customer.purchase_history) > 0
-    purchase_count = len(customer.purchase_history)
-    
-    # 실시간 행동 데이터 확인
-    has_cart = len(customer.cart_items) > 0
-    has_viewed = len(customer.recently_viewed_items) > 0
-    has_behavioral_data = has_cart or has_viewed
-    
-    # 뷰티 프로필 확인
-    has_beauty_profile = (
-        len(customer.skin_type) > 0 and 
-        len(customer.skin_concerns) > 0
-    )
-    
-    # 케이스 결정 로직
-    if not has_purchase_history and not has_behavioral_data:
-        # Case 1: 아무 데이터도 없음 → Cold Start
-        return 1
-    
-    elif not has_purchase_history and has_behavioral_data:
-        # Case 2: 구매는 없지만 장바구니/최근 본 상품이 있음 → Behavioral
-        return 2
-    
-    elif has_purchase_history and purchase_count <= 2 and has_beauty_profile:
-        # Case 3: 구매 이력이 적고 뷰티 프로필이 명확함 → Profile-based
-        return 3
-    
-    elif has_purchase_history and purchase_count >= 3:
-        # Case 4: 구매 이력이 충분함 → Hybrid (재구매 + 프로필 + 행동)
-        return 4
-    
-    else:
-        # 기본값:1  (Cold Start)
-        return 1
-
-
-# 연령대별 브랜드 매핑
-BRAND_AGE_MAPPING = {
-    "이니스프리": ["10s", "20s"],
-    "에스쁘아": ["20s", "30s"],
-    "마몽드": ["20s", "30s"],
-    "라네즈": ["20s", "30s"],
-    "한율": ["30s", "40s"],
-    "아이오페": ["30s", "40s", "50s"],
-    "헤라": ["30s", "40s"],
-    "프리메라": ["30s", "40s"],
-    "에스트라": ["30s", "40s", "50s"],
-    "설화수": ["40s", "50s", "60s+"]
-}
 
 
 def get_recent_brands(user_data: CustomerProfile, days: int = 30) -> Set[str]:
@@ -257,7 +190,7 @@ def determine_recommended_brand(personatype: int, recent_brands: List[str]) -> L
     페르소나 적합도와 최근 이용 빈도를 기반으로 브랜드 랭킹을 산정합니다.
     
     Scoring Logic:
-    - 페르소나 추천 브랜드: +10점 (Base Score)
+    - 페르소나 추천 브랜드: +3점 (Base Score)
     - 최근 이용 브랜드: +1점 * 이용 횟수 (Frequency Score)
     
     Args:

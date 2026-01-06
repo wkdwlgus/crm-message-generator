@@ -11,7 +11,6 @@ class GraphState(TypedDict):
     """LangGraph State 정의"""
     user_id: str
     user_data: CustomerProfile
-    strategy: dict
     recommended_product_id: str
     product_data: dict
     brand_tone: dict
@@ -23,6 +22,9 @@ class GraphState(TypedDict):
     error_reason: str  # Compliance 실패 이유
     success: bool  # API 응답용
     retrieved_legal_rules: list  # 캐싱용: Compliance 노드에서 한 번 검색한 규칙 재사용
+    # Optional inputs from Orchestrator that might be used here
+    crm_reason: str
+    target_persona: str
 
 
 def message_writer_node(state: GraphState) -> GraphState:
@@ -31,7 +33,6 @@ def message_writer_node(state: GraphState) -> GraphState:
     
     OpenAI GPT API를 호출하여 개인화된 메시지를 생성합니다.
     """
-    strategy = state["strategy"]
     user_data = state["user_data"]
     product_data = state["product_data"]
     brand_tone = state["brand_tone"]
@@ -39,6 +40,10 @@ def message_writer_node(state: GraphState) -> GraphState:
     retry_count = state.get("retry_count", 0)
     error_reason = state.get("error_reason", "")  # Compliance 실패 이유 가져오기
     
+    # Strategy replacement logic
+    crm_reason = state.get("crm_reason", "Product Recommendation")
+    target_persona = state.get("target_persona", "Trend Setter")
+
     import json
     import os
 
@@ -117,28 +122,12 @@ def message_writer_node(state: GraphState) -> GraphState:
     }
     limit = channel_limits.get(channel, "적절한 길이")
     
-    # 3. 전략 변수 설정 (Orchestrator int 입력 대응)
-    strategy_input = state["strategy"]
+    # 3. 전략 변수 설정 (Orchestrator 입력 대응)
     
     # 기본값 설정
-    persona_name = "Trend Setter"
+    persona_name = target_persona if target_persona else "Trend Setter"
     communication_tone = "Casual & Trendy"
-    message_goal = "Product Recommendation"
-    
-    if isinstance(strategy_input, int):
-        # Orchestrator가 Case(int)를 반환하는 경우 Goal 매핑
-        goals = {
-            0: "Best Seller Recommendation (Cold Start)",
-            1: "Interest-based Recommendation (Behavioral)", 
-            2: "Personalized Recommendation (Profile-based)",
-            3: "Repurchase Reminder (Hybrid)"
-        }
-        message_goal = goals.get(strategy_input, "Product Recommendation")
-    elif isinstance(strategy_input, dict):
-        # Dict 형태인 경우 (Future Proof)
-        persona_name = strategy_input.get("persona_name", persona_name)
-        message_goal = strategy_input.get("message_goal", message_goal)
-        communication_tone = strategy_input.get("communication_tone", communication_tone)
+    message_goal = crm_reason if crm_reason else "Product Recommendation"
 
     user_prompt = user_prompt_template.format(
         user_name=user_data.name,

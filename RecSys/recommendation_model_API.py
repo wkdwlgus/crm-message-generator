@@ -394,13 +394,13 @@ async def get_recommendation(request_data: Any) -> Dict[str, Any]:
     Get recommendation using Cross-Encoder based system.
     """
     user_id = request_data.user_id
-    case = request_data.case
+    intention = getattr(request_data, 'intention', None)
     user_data = request_data.user_data
     target_brands = getattr(request_data, 'target_brand', None)
     
     print(f"\n🎯 추천 요청 수신:")
     print(f"  - User ID: {user_id}")
-    print(f"  - Case: {case}")
+    print(f"  - Intention: {intention}")
     print(f"  - Target Brands: {target_brands}")
     
     # Cross-Encoder 기반 추천 시스템 호출

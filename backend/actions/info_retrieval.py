@@ -13,8 +13,7 @@ class GraphState(TypedDict):
     """LangGraph State 정의"""
     user_id: str
     user_data: CustomerProfile
-    recommended_brand: List[str]  # orchestrator에서 결정된 추천 브랜드
-    strategy: int  # orchestrator에서 결정된 케이스 (1-4)
+    recommended_brand: str  # orchestrator에서 결정된 추천 브랜드
     recommended_product_id: str
     product_data: dict
     brand_tone: dict
@@ -43,7 +42,6 @@ def info_retrieval_node(state: GraphState) -> GraphState:
         업데이트된 GraphState
     """
     user_data = state["user_data"]
-    strategy_case = state["strategy"]
     target_brands = state.get("recommended_brand", None)
     
     # RecSys API URL
@@ -51,15 +49,23 @@ def info_retrieval_node(state: GraphState) -> GraphState:
     
     print(f"  🎯 상품 추천 시작 (RecSys API 호출)")
     print(f"  - User ID: {state['user_id']}")
-    print(f"  - Strategy Case: {strategy_case}")
     print(f"  - Target Brands: {target_brands}")
     
     # RecSys API 호출
+    # orchestrator에서 전달받은 리스트(또는 문자열)를 RecSys API 포맷에 맞게 전송
+    raw_brands = state.get("recommended_brand", [])
+    if isinstance(raw_brands, str):
+        target_brands_list = [raw_brands]
+    elif isinstance(raw_brands, list):
+        target_brands_list = raw_brands
+    else:
+        target_brands_list = []
+
     payload = {
         "user_id": state["user_id"],
-        "case": strategy_case,
-        "target_brand": target_brands if target_brands else None,
-        "user_data": user_data.dict() if user_data else None
+        "user_data": user_data.dict() if user_data else None,
+        "target_brand": target_brands_list,
+        "intention": state.get("crm_reason", "")   # backend 'crm_reason' -> RecSys 'intention' 매핑
     }
     
     try:

@@ -14,7 +14,6 @@ class GraphState(TypedDict):
     """LangGraph State 정의"""
     user_id: str
     user_data: CustomerProfile
-    strategy: dict
     recommended_product_id: str
     product_data: dict
     brand_tone: dict

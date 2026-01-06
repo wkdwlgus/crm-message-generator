@@ -29,3 +29,5 @@ RecSys/__pycache__/
 RecSys/venv/
 RecSys/.vscode/
 
+
+backend/.env
