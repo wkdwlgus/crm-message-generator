@@ -54,17 +54,18 @@ jobs:
       - name: Configure GPU and Scaling
         run: |
           az extension add --name containerapp --upgrade
+          
           # Add GPU workload profile to the environment if it doesn't exist
-          # Profile type 'Consumption-GPU-NC8as-T4' is standard for T4 GPUs
+          # Use '|| true' to ignore error if it already exists (OneUniqueProfileAllowed)
           az containerapp env workload-profile add \
             --name managedEnvironment-DefaultResource-8bfb \
             --resource-group DefaultResourceGroup-USW3 \
             --workload-profile-name gpu-profile \
             --workload-profile-type Consumption-GPU-NC8as-T4 \
             --min-nodes 0 \
-            --max-nodes 10
+            --max-nodes 10 || true
 
-          # Update the container app to use the GPU workload profile
+          # Update the container app to use the GPU workload profile and set min-replicas to 1
           az containerapp update \
             --name blooming-recsys-beta \
             --resource-group DefaultResourceGroup-USW3 \
