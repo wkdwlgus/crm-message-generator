@@ -4,26 +4,38 @@ from typing import List, Optional, Dict, Any
 import uvicorn
 from dotenv import load_dotenv
 import os
-import torch
-from models import CustomerProfile
+import logging
 
 # Load environment variables
 load_dotenv()
 
-import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-logger.info("Initializing FastAPI app...")
-get_recommendation = None # Placeholder
-import_error = None
+# Global cache for the recommendation function
+_get_recommendation_cached = None
+_import_error = None
 
-try:
-    from recommendation_model_API import get_recommendation
-    logger.info("Imported recommendation_model_API successfully")
-except Exception as e:
-    import_error = str(e)
-    logger.error(f"Error importing recommendation_model_API: {e}")
+def load_ml_components():
+    """Lazy load heavy ML components to ensure instant server startup"""
+    global _get_recommendation_cached, _import_error
+    
+    if _get_recommendation_cached is not None:
+        return _get_recommendation_cached
+
+    logger.info("Deferred loading of ML components started...")
+    try:
+        # Move heavy imports here
+        import torch
+        from recommendation_model_API import get_recommendation
+        
+        logger.info(f"ML components loaded. torch version: {torch.__version__}, GPU available: {torch.cuda.is_available()}")
+        _get_recommendation_cached = get_recommendation
+        return _get_recommendation_cached
+    except Exception as e:
+        _import_error = str(e)
+        logger.error(f"Error loading ML components: {e}")
+        return None
 
 app = FastAPI(
     title="Blooming Recommendation System",
@@ -33,9 +45,9 @@ app = FastAPI(
 
 class RecommendationRequest(BaseModel):
     user_id: str
-    target_brand: Optional[List[str]] = [] # Target brand list
-    intention: Optional[str] = None # Recommendation intention (ex: "weather", "new_product", "general")
-    user_data: Optional[CustomerProfile] = None
+    target_brand: Optional[List[str]] = []
+    intention: Optional[str] = None
+    user_data: Optional[Any] = None # Using Any for flexibility during load
 
 class RecommendationResponse(BaseModel):
     product_id: str
@@ -50,11 +62,18 @@ async def favicon():
 
 @app.get("/")
 async def root():
+    # Attempt to load if not already loaded (non-blocking if successful)
+    if _get_recommendation_cached is None and _import_error is None:
+        # Note: In a real production app, you might want this to be a background task
+        # so root always returns instantly. For now, we'll try to load.
+        load_ml_components()
+        
     return {
-        "status": "healthy" if import_error is None else "error", 
+        "status": "healthy" if _import_error is None else "error", 
         "service": "Blooming Recommendation System (GPU)",
-        "endpoint": "/recommend (POST only)",
-        "import_error": import_error
+        "ml_loaded": _get_recommendation_cached is not None,
+        "import_error": _import_error,
+        "endpoint": "/recommend (POST only)"
     }
 
 @app.post("/recommend", response_model=RecommendationResponse)
@@ -62,19 +81,20 @@ async def recommend(request: RecommendationRequest):
     """
     Recommend a product based on user profile and history using LLM.
     """
+    rec_fn = load_ml_components()
+    
+    if rec_fn is None:
+        raise HTTPException(status_code=500, detail=f"Recommendation engine failed to load: {_import_error}")
+        
     try:
-        if get_recommendation is None:
-            raise Exception(f"recommendation_model_API was not imported correctly. Error: {import_error}")
-        result = await get_recommendation(request)
+        result = await rec_fn(request)
         return result
     except Exception as e:
+        logger.error(f"Runtime error in recommendation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    # This block is for local development
-    import uvicorn
     logger.info("Starting RecSys server (main block) on port 80...")
     uvicorn.run("main:app", host="0.0.0.0", port=80)
 else:
-    # This block runs when imported (e.g., by uvicorn worker in Docker)
-    logger.info("RecSys app module loaded")
+    logger.info("RecSys app module loaded. ML loading deferred.")
