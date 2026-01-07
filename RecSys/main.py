@@ -2,7 +2,6 @@ from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import uvicorn
-from recommendation_model_API import get_recommendation
 from dotenv import load_dotenv
 import os
 import torch
@@ -16,12 +15,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 logger.info("Initializing FastAPI app...")
+get_recommendation = None # Placeholder
+
 try:
     from recommendation_model_API import get_recommendation
     logger.info("Imported recommendation_model_API successfully")
 except Exception as e:
     logger.error(f"Error importing recommendation_model_API: {e}")
-    # Don't re-raise yet, let app start if possible to see logs
 
 app = FastAPI(
     title="Blooming Recommendation System",
