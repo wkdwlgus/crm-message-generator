@@ -11,12 +11,8 @@ user: |
   다음 정보를 바탕으로 고객에게 발송할 {channel} 메시지를 작성해주세요.
   
   [고객 프로필]
-  - 이름: {user_name}
-  - 연령대: {age_group}
-  - 멤버십: {membership_level}
   - 피부타입: {skin_type}
   - 피부고민: {skin_concerns}
-  - 최근 구매: {last_purchase}
   
   [추천 상품]
   - 상품명: {product_name}

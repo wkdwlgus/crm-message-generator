@@ -49,18 +49,15 @@ def message_writer_node(state: GraphState) -> GraphState:
     brand_name = product_data['brand']
     persona_name = "Trend Setter" # Default
     
-    # 전략에서 persona 추출
-    strategy_input = state["strategy"]
-    if isinstance(strategy_input, dict):
-        persona_name = strategy_input.get("persona_name", persona_name)
+    # 전략에서 persona 추출 (Optional)
+    if "target_persona" in state:
+        persona_name = state["target_persona"]
     
     beauty_profile = {
         "skin_type": user_data.skin_type,
         "skin_concerns": user_data.skin_concerns,
         "keywords": user_data.keywords,
-        "preferred_tone": user_data.preferred_tone,
-        "age_group": user_data.age_group,
-        "gender": user_data.gender
+        "preferred_tone": user_data.preferred_tone
     }
 
     print(f"🧐 CRM Cache Check: {brand_name}, {persona_name}, {intent}, {weather}")
@@ -215,26 +212,12 @@ def message_writer_node(state: GraphState) -> GraphState:
     communication_tone = "Casual & Trendy"
     message_goal = "Product Recommendation"
     
-    if isinstance(strategy_input, int):
-        # Orchestrator가 Case(int)를 반환하는 경우 Goal 매핑
-        goals = {
-            0: "Best Seller Recommendation (Cold Start)",
-            1: "Interest-based Recommendation (Behavioral)", 
-            2: "Personalized Recommendation (Profile-based)",
-            3: "Repurchase Reminder (Hybrid)"
-        }
-        message_goal = goals.get(strategy_input, "Product Recommendation")
-    elif isinstance(strategy_input, dict):
-        message_goal = strategy_input.get("message_goal", message_goal)
-        communication_tone = strategy_input.get("communication_tone", communication_tone)
+    # strategy_input 로직 제거 및 기본값/상태값 사용
+    # TODO: 추후 Orchestrator에서 구체적인 전략을 넘겨주면 매핑 로직 복구 가능
 
     user_prompt = user_prompt_template.format(
-        user_name=user_data.name,
-        age_group=user_data.age_group,
-        membership_level=user_data.membership_level,
         skin_type=', '.join(user_data.skin_type),
         skin_concerns=', '.join(user_data.skin_concerns),
-        last_purchase=user_data.last_purchase.product_name if user_data.last_purchase else '없음',
         product_name=product_data['name'],
         brand_name=product_data['brand'],
         discounted_price=f"{product_data['price']['discounted_price']:,}",

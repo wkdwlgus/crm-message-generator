@@ -40,34 +40,15 @@ def test_crm_product_1():
         # DB Dict -> CustomerProfile (Same logic as API - verified by direct usage)
         # For test simplicity, I will re-use the conversion logic or just trust the manual fallback if I can't import the API function easily.
         # Let's try to map it quickly.
-        from models.user import CustomerProfile, LastPurchase, ShoppingBehavior, CouponProfile, LastEngagement
+        from models.user import CustomerProfile
         user_data = CustomerProfile(
             user_id=db_user.get("user_id"),
-            name=db_user.get("name"),
-            age_group=db_user.get("age_group"),
-            gender=db_user.get("gender"),
-            membership_level=db_user.get("membership_level"),
             skin_type=db_user.get("skin_type", []),
             skin_concerns=db_user.get("skin_concerns", []),
-            keywords=db_user.get("keywords", []),
-            acquisition_channel=db_user.get("acquisition_channel", "Unknown"),
-            average_order_value=db_user.get("average_order_value", 0),
-            average_repurchase_cycle_days=db_user.get("average_repurchase_cycle_days", 30),
-            
-            last_purchase=LastPurchase(**db_user["last_purchase"]) if db_user.get("last_purchase") else None,
-            purchase_history=db_user.get("purchase_history", []),
-
-            shopping_behavior=ShoppingBehavior(**db_user.get("shopping_behavior", {
-                "event_participation": "Low", "cart_abandonment_rate": "Rare", "price_sensitivity": "Medium"
-            })),
-            coupon_profile=CouponProfile(**db_user.get("coupon_profile", {
-                "history": [], "propensity": "Balanced", "preferred_type": "Percentage_Off"
-            })),
-            last_engagement=LastEngagement(**db_user.get("last_engagement", {})),
-            cart_items=db_user.get("cart_items", []),
-            recently_viewed_items=db_user.get("recently_viewed_items", [])
+            preferred_tone=db_user.get("preferred_tone"),
+            keywords=db_user.get("keywords", [])
         )
-        print(f">>> User Found: {user_data.name}")
+        print(f">>> User Found: {user_data.user_id}")
 
     # Setup Initial State
     initial_state = {
