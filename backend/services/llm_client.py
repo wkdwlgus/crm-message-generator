@@ -8,8 +8,8 @@ from typing import List, Dict, Any, Optional
 
 class LLMClient:
     def __init__(self):
-        self.client = openai.OpenAI(api_key=settings.openai_api_key)
-        self.model = settings.openai_model
+        self.client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+        self.model = settings.OPENAI_MODEL
 
     def generate_chat_completion(
         self, 

@@ -64,7 +64,7 @@ except:
     supabase = None
     SUPABASE_AVAILABLE = False
 
-openai_client = OpenAI(api_key=settings.openai_api_key)
+openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 # 전역 캐시
 ALL_RULE_KEYWORDS = None
