@@ -53,3 +53,11 @@ jobs:
             OPENAI_API_KEY=secretref:openai-api-key
             SUPABASE_URL=secretref:supabase-url
             SUPABASE_KEY=secretref:supabase-key
+      
+      - name: Force update ingress port to 80
+        run: |
+          az containerapp ingress update \
+            --name blooming-recsys-beta \
+            --resource-group DefaultResourceGroup-USW3 \
+            --target-port 80 \
+            --type external
