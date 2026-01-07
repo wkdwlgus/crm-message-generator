@@ -35,8 +35,12 @@ async def get_customers_endpoint():
     description="고객 ID를 기반으로 페르소나에 맞춘 개인화 CRM 메시지를 생성합니다.",
 )
 async def generate_message(
-    x_user_id: str = Header(..., description="고객 ID"),
-    channel: Optional[str] = Query("APPPUSH", description="메시지 채널 (APPPUSH, SMS, KAKAO, EMAIL)"),
+    x_user_id: str = Header("user_0001", description="고객 ID"),
+    channel: Optional[str] = Query("SMS", description="메시지 채널 (APPPUSH, SMS, KAKAO, EMAIL)"),
+    reason: Optional[str] = Query("신제품 출시 이벤트", description="CRM 발송 이유 (날씨, 할인행사, 일반홍보)"),
+    weather_detail: Optional[str] = Query(None, description="날씨 상세 정보 (예: 폭염 주의보, 건조한 가을) - reason='날씨'일 때 필수"),
+    brand: Optional[str] = Query("이니스프리", description="선택된 브랜드 (없을 경우 자동 추천)"),
+    persona: Optional[str] = Query("P1", description="선택된 페르소나 (예: P1, P2)")
 ):
     """
     개인화 메시지 생성 API
@@ -53,6 +57,22 @@ async def generate_message(
         
     Raises:
         HTTPException: 고객 정보를 찾을 수 없거나 메시지 생성 실패 시
+    """
+    # 0. Deduplication Check (중복 방지)
+    # 특정 브랜드에 대해 최근 24시간 내에 발송된 메시지가 있는지 확인
+    if brand:
+        recent_msgs = supabase_client.get_recent_messages(x_user_id, days=1)
+        for msg in recent_msgs:
+            # 브랜드가 일치하고, (옵션) 성공한 메시지인 경우
+            if msg.get('brand_name') == brand:
+                print(f"🚫 Duplicate message blocked for User {x_user_id}, Brand {brand}")
+                # 프론트엔드에서 처리하기 쉽도록 429 Too Many Requests 또는 409 Conflict 반환
+                # 여기서는 409 Conflict 사용
+                raise HTTPException(
+                    status_code=409, 
+                    detail=f"최근 24시간 내에 '{brand}' 브랜드에 대한 메시지가 이미 생성되었습니다."
+                )
+
     # 1. 고객 데이터 조회 (Supabase -> Fallback to Mock)
     db_user = supabase_client.get_user(x_user_id)
     
@@ -61,42 +81,20 @@ async def generate_message(
     if db_user:
         # DB Dict -> CustomerProfile 변환
         try:
-            from models.user import CustomerProfile, LastPurchase, ShoppingBehavior, CouponProfile, LastEngagement
+            from models.user import CustomerProfile
             
             # Pydantic 모델 변환
+            # 사용자 요청에 따라 필수 4요소(피부타입, 고민, 톤, 키워드) 위주로 구성하고 나머지는 자동 처리
             customer = CustomerProfile(
                 user_id=db_user.get("user_id"),
-                name=db_user.get("name"),
-                age_group=db_user.get("age_group"),
-                gender=db_user.get("gender"),
-                membership_level=db_user.get("membership_level"),
+
+                # [Core Elements] 사용자가 지정한 핵심 4요소
                 skin_type=db_user.get("skin_type", []),
                 skin_concerns=db_user.get("skin_concerns", []),
                 preferred_tone=db_user.get("preferred_tone"),
                 keywords=db_user.get("keywords", []),
-                acquisition_channel=db_user.get("acquisition_channel", "Unknown"),
-                average_order_value=db_user.get("average_order_value", 0),
-                average_repurchase_cycle_days=db_user.get("average_repurchase_cycle_days", 30),
-                repurchase_cycle_alert=db_user.get("repurchase_cycle_alert", False),
                 
-                last_purchase=LastPurchase(**db_user["last_purchase"]) if db_user.get("last_purchase") else None,
-                purchase_history=db_user.get("purchase_history", []),
-                
-                shopping_behavior=ShoppingBehavior(**db_user.get("shopping_behavior", {
-                    "event_participation": "Low", 
-                    "cart_abandonment_rate": "Rare", 
-                    "price_sensitivity": "Medium"
-                })),
-                
-                coupon_profile=CouponProfile(**db_user.get("coupon_profile", {
-                    "history": [], 
-                    "propensity": "Balanced", 
-                    "preferred_type": "Percentage_Off"
-                })),
-                
-                last_engagement=LastEngagement(**db_user.get("last_engagement", {})),
-                cart_items=db_user.get("cart_items", []),
-                recently_viewed_items=db_user.get("recently_viewed_items", [])
+                # 나머지 필드는 모델 정의에서 Optional이나 Default가 있으므로 생략 가능
             )
         except Exception as e:
             print(f"Error converting DB user data: {e}")
@@ -119,8 +117,6 @@ async def generate_message(
             "user_id": x_user_id,
             "user_data": customer,
             "channel": channel,
-            
-            # [추가] 프론트엔드 입력값
             "crm_reason": reason or "",
             "weather_detail": weather_detail or "",  # 추가됨
             "target_brand": brand or "",
@@ -140,6 +136,22 @@ async def generate_message(
         
         # 3. 결과 검증
         if result.get("success", False):
+            # [Added] Save to Supabase (비동기 처리 권장되나 여기선 동기 처리)
+            try:
+                save_data = {
+                    "user_id": result["user_id"],
+                    "message_text": result["message"],
+                    "channel": result["channel"],
+                    "persona_used": result.get("target_persona"),
+                    "product_id": result.get("recommended_product_id"),
+                    "brand_name": result.get("target_brand") or result.get("recommended_brand"),
+                    "compliance_passed": result.get("compliance_passed", False),
+                    "retry_count": result.get("retry_count", 0)
+                }
+                supabase_client.save_generated_message(save_data)
+            except Exception as e:
+                print(f"⚠️ Failed to save generated message: {e}")
+
             # MessageResponse 모델로 변환하여 반환
             return MessageResponse(
                 message=result["message"],

@@ -255,4 +255,3 @@ async def get_recommendation(request_data: Any) -> Dict[str, Any]:
             "score": 0.5,
             "reason": "시스템 오류로 인한 기본 추천입니다."
         }
-

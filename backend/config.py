@@ -21,9 +21,6 @@ class Settings(BaseSettings):
     max_retry_count: int = 5
     env: str = "development"
 
-    SUPABASE_URL: str
-    SUPABASE_KEY: str
-
     RecSys_API_URL: str = "http://localhost:8001/recommend"
     
     # CORS
