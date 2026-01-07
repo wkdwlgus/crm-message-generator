@@ -57,6 +57,9 @@ def orchestrator_node(state: GraphState) -> GraphState:
     target_brand = state.get("target_brand", "")
     target_persona = state["target_persona"]
     
+    # [Fix] Clean P prefix if exists (Handle both 'P1' and '1')
+    print(f"🧐 Orchestrator Input - Target Persona: {target_persona}")
+    
     crm_reason = state.get("crm_reason", "")
     
     # [로깅] 발송 의도 확인
@@ -68,10 +71,10 @@ def orchestrator_node(state: GraphState) -> GraphState:
     # 여기서는 Mock 로직을 제거하고 단순히 target_brand가 없으면 기본 로직(빈 리스트 등)을 타게 수정하거나
     # determine_recommended_brand 내부에서도 Mock 사용을 제거해야 함.
     # 일단 요구사항에 따라 mock removal.
+    print("target_brand:", target_brand)
     
     if target_brand=="":
-        # Mock 로직 제거: 최근 이용 브랜드 데이터가 없으면 추천 로직이 동작하지 않거나 기본값 사용
-        # 최근 구매 이력 조회 로직 제거 요청에 따라 빈 리스트 전달
+        print("⚠️ Target Brand is empty, using default recommendation logic.")
         recommended_brand = determine_recommended_brand(target_persona, [])
     else:
         recommended_brand = [target_brand]
@@ -99,8 +102,8 @@ def generate_mock_recent_brands(personatype: int) -> List[str]:
         랜덤하게 생성된 최근 이용 브랜드 리스트
     """
     try:
-        # 현재 파일(orchestrator.py)과 같은 디렉토리에 있는 persona_db_v2.json 참조
-        current_dir = Path(r"c:\Users\helen\Desktop\kt cloud tech up\advanced_project\blooming-v1\backend\actions")        
+        # 현재 파일(orchestrator.py)이 있는 위치 기준 (Relative Path)
+        current_dir = Path(__file__).parent
         json_path = current_dir / "persona_db.json"
         
         if not json_path.exists():
@@ -114,6 +117,8 @@ def generate_mock_recent_brands(personatype: int) -> List[str]:
         target_brands = set()
         
         key = str(personatype)
+        if key.lower().startswith('p'):
+            key = key[1:]
         
         for p_id, p_data in persona_db.items():
             brands = p_data.get("recommended_brands", [])
@@ -123,6 +128,7 @@ def generate_mock_recent_brands(personatype: int) -> List[str]:
                     target_brands.add(b)
         
         all_brands_list = list(all_brands)
+        print(f"🗂️ All Brands: {all_brands_list}")
         
         if not all_brands_list:
             return []
@@ -170,8 +176,8 @@ def determine_recommended_brand(personatype: int, recent_brands: List[str]) -> L
         # [Debugging Log]
         print(f"🕵️ Determine Brand Input - Persona: {personatype}, Recent Brands: {recent_brands}")
 
-        # 현재 파일(orchestrator.py)과 같은 디렉토리에 있는 persona_db_v2.json 참조
-        current_dir = Path(r"c:\Users\helen\Desktop\kt cloud tech up\advanced_project\blooming-v1\backend\actions")        
+        # 현재 파일(orchestrator.py)이 있는 위치 기준 (Relative Path)
+        current_dir = Path(__file__).parent
         json_path = current_dir / "persona_db.json"
         
         if not json_path.exists():
@@ -184,6 +190,8 @@ def determine_recommended_brand(personatype: int, recent_brands: List[str]) -> L
         # 1. 타겟 페르소나 브랜드 식별
         target_brands = set()
         key = str(personatype)
+        if key.lower().startswith('p'):
+            key = key[1:]
         
         if key in persona_db:
             target_brands = set(persona_db[key].get("recommended_brands", []))

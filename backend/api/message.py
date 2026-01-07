@@ -34,11 +34,11 @@ async def get_customers_endpoint():
     description="고객 ID를 기반으로 페르소나에 맞춘 개인화 CRM 메시지를 생성합니다.",
 )
 async def generate_message(
-    x_user_id: str = Header("1", description="고객 ID"),
+    x_user_id: str = Header("user_0002", description="고객 ID"),
     channel: Optional[str] = Query("SMS", description="메시지 채널 (APPPUSH, SMS, KAKAO, EMAIL)"),
     reason: Optional[str] = Query("신제품 출시 이벤트", description="CRM 발송 이유 (날씨, 할인행사, 일반홍보)"),
     weather_detail: Optional[str] = Query(None, description="날씨 상세 정보 (예: 폭염 주의보, 건조한 가을) - reason='날씨'일 때 필수"),
-    brand: Optional[str] = Query("이니스프리", description="선택된 브랜드 (없을 경우 자동 추천)"),
+    brand: Optional[str] = Query(None, description="선택된 브랜드 (없을 경우 자동 추천)"),
     persona: Optional[str] = Query("P1", description="선택된 페르소나 (예: P1, P2)")
 ):
     """
@@ -48,7 +48,7 @@ async def generate_message(
         x_user_id: Header에서 추출한 고객 ID (기본값: U001 - 테스트용)
         channel: 메시지 채널 (기본값: SMS)
         reason: CRM 발송 목적 (기본값: 신제품 출시 이벤트)
-        brand: 특정 브랜드 지정 시 (기본값: 이니스프리)
+        brand: 특정 브랜드 지정 시 (기본값: None -> 자동 추천)
         persona: 특정 페르소나 지정 시 (기본값: P1)
         
     Returns:
