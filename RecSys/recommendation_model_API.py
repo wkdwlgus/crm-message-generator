@@ -366,46 +366,92 @@ async def recommend_product_with_brands(
         # 3) 임베딩 생성
         query_emb = embed_text(oa, query_text)
         
-        # 4) 벡터 유사도 검색 (후보 풀)
-        rpc_payload = {
-            "filter": {},
-            "match_count": CANDIDATE_POOL,
-            "query_embedding": query_emb,
-        }
-        match_resp = sb.rpc("match_products", rpc_payload).execute()
-        matches = match_resp.data or []
+        # 4) 벡터 유사도 검색 (후보 풀) - 브랜드 필터링 적용
+        if target_brands and len(target_brands) > 0:
+            # 브랜드가 지정된 경우
+            print(f"\n🔍 [RPC Search] 브랜드 지정 검색: {target_brands}")
+            
+            rpc_payload = {
+                "query_embedding": query_emb,
+                "match_count": CANDIDATE_POOL,
+                "filter_brands": target_brands
+            }
+            
+            try:
+                response = sb.rpc('match_products', rpc_payload).execute()
+                matches = response.data or []
+                
+                print(f"📊 [RPC Response] 브랜드 필터링 검색 결과: {len(matches)}개")
+                
+                # 결과 출력 (상위 3개)
+                if matches:
+                    print(f"  - 상위 3개 샘플:")
+                    for i, item in enumerate(matches[:3], 1):
+                        print(f"    {i}. ID: {item.get('product_id')}, 유사도: {item.get('similarity', 0):.4f}")
+                
+            except Exception as e:
+                print(f"❌ [RPC Error] 브랜드 필터링 검색 실패: {e}")
+                matches = []
+        else:
+            # 브랜드 지정 없음 - 일반 검색
+            print(f"\n🔍 [RPC Search] 브랜드 미지정 - 전체 검색 (pool={CANDIDATE_POOL})")
+            
+            rpc_payload = {
+                "filter": {},
+                "match_count": CANDIDATE_POOL,
+                "query_embedding": query_emb,
+            }
+            
+            match_resp = sb.rpc("match_products", rpc_payload).execute()
+            matches = match_resp.data or []
+            
+            print(f"📊 [RPC Response] 유사도 검색 결과: {len(matches)}개")
         
         if not matches:
-            print("[WARN] 유사도 검색 결과가 없습니다.")
+            print("❌ [ERROR] 최종 유사도 검색 결과가 없습니다.")
             return None
         
         matches.sort(key=lambda m: float(m.get("similarity", 0.0)), reverse=True)
         candidate_ids = [m["product_id"] for m in matches]
         sim_map = {m["product_id"]: float(m["similarity"]) for m in matches}
         
-        # 5) products 상세 정보 조회 (브랜드 필터링 적용)
-        query = (
+        print(f"\n📋 [Candidate Pool] 최종 후보:")
+        print(f"  - 후보 ID 수: {len(candidate_ids)}개")
+        print(f"  - 상위 5개 ID: {candidate_ids[:5]}")
+        
+        # 5) products 상세 정보 조회
+        # RPC에서 이미 브랜드 필터링이 적용되었으므로 추가 필터 불필요
+        print(f"\n🗃️ [Products Table] 상세 정보 조회:")
+        products_resp = (
             sb.table("products")
             .select("id, brand, name, category_major, category_middle, category_small, price_final, discount_rate, review_score, review_count")
             .in_("id", candidate_ids)
+            .execute()
         )
-        
-        if target_brands and len(target_brands) > 0:
-            query = query.in_("brand", target_brands)
-            print(f"  🏷️ 브랜드 필터링 적용: {target_brands}")
-        
-        products_resp = query.execute()
         products = products_resp.data or []
         
+        print(f"\n📦 [Products Result] 조회 결과:")
+        print(f"  - 조회된 제품 수: {len(products)}개")
+        if products:
+            print(f"  - 브랜드 분포: {dict((b, sum(1 for p in products if p.get('brand') == b)) for b in set(p.get('brand') for p in products))}")
+            print(f"  - 상위 3개:")
+            for i, p in enumerate(products[:3], 1):
+                print(f"    {i}. [{p.get('brand')}] {p.get('name')[:30]}... (ID={p.get('id')})")
+        
         if not products:
+            print(f"\n❌ [ERROR] products 테이블 조회 실패")
             if target_brands:
-                print(f"[WARN] 지정된 브랜드({target_brands})에서 상품을 찾지 못함")
+                print(f"  → 브랜드 필터({target_brands}) 때문에 제품이 없을 수 있음")
+                print(f"  → candidate_ids에는 {len(candidate_ids)}개가 있었지만 해당 브랜드 제품이 없음")
             else:
-                print("[WARN] 상품을 찾지 못함")
+                print(f"  → candidate_ids={candidate_ids[:5]}... 중 products 테이블에 없는 ID들")
             return None
         
         prod_map = {p["id"]: p for p in products}
         filtered_ids = list(prod_map.keys())
+        
+        print(f"\n✅ [Products Filtered] 최종 제품 풀:")
+        print(f"  - 필터링 후 제품 수: {len(filtered_ids)}개")
         
         # 6) products_vector content 가져오기
         pv_resp = (
@@ -486,14 +532,30 @@ async def recommend_product_with_brands(
         
         # 9) 디버그 출력 (상위 3개)
         if reranked:
-            print(f"\n  📊 Top 3 추천 결과:")
+            print(f"\n🏆 [Final Ranking] Top 3 추천 결과:")
             for i, r in enumerate(reranked[:3], 1):
-                match_rate = kwb if i == 1 else 0.0  # 1위만 출력
-                print(f"    {i}. {r['name'][:30]}... (키워드: {match_rate*100:.0f}%, 최종: {r['final_score']:.3f})")
+                print(f"  {i}. [{r.get('brand')}] {r['name'][:30]}...")
+                print(f"     - CE: {r['ce_score']:.4f}, KW: {r['kw_bonus']:.3f}, Final: {r['final_score']:.4f}")
+                print(f"     - 할인: {r.get('discount_rate', 0)}%, 리뷰: {r.get('review_score', 0)}⭐")
+            
+            # 최종 1위 제품 상세 정보
+            winner = reranked[0]
+            print(f"\n🎯 [Winner] 최종 선택:")
+            print(f"  - Brand: {winner.get('brand')} ← {'✅ 존재' if winner.get('brand') else '❌ 누락'}")
+            print(f"  - Name: {winner.get('name')}")
+            print(f"  - Product ID: {winner.get('product_id')}")
         
         # 8) top_k 개수만큼 반환
         if top_k == 1:
-            return reranked[0] if reranked else None
+            result = reranked[0] if reranked else None
+            if result:
+                # 반환 전 brand 필드 재확인
+                if not result.get('brand'):
+                    print(f"\n⚠️ [CRITICAL] 반환할 제품에 brand가 없음! prod_map 확인:")
+                    pid = result.get('product_id')
+                    if pid and int(pid) in prod_map:
+                        print(f"  - prod_map[{pid}]: {prod_map[int(pid)]}")
+            return result
         else:
             return reranked[:top_k]
             
@@ -512,6 +574,8 @@ async def get_recommendation(request_data: Any) -> Dict[str, Any]:
     intention = getattr(request_data, 'intention', None) or ""
     user_data = request_data.user_data
     target_brands = getattr(request_data, 'target_brand', None)
+
+    print(f"user_data: {user_data}, target_brands: {target_brands}")
     
     print(f"\n🎯 추천 요청 수신:")
     print(f"  - User ID: {user_id}")
@@ -568,5 +632,3 @@ async def get_recommendation(request_data: Any) -> Dict[str, Any]:
         "score": 0.0,
         "reason": "상품 추천에 실패했습니다.",
     }
-
-

@@ -21,7 +21,7 @@ def get_customer_list(limit: int = 5) -> List[Dict[str, Any]]:
     try:
         # 필요한 컬럼만 쏙 골라서 가져오기
         result = supabase.table("customers").select(
-            "user_id, name, membership_level, skin_type, keywords, preferred_tone, persona_category"
+            "user_id, name, membership_level, skin_type, keywords, preferred_tone, persona_id"
         ).order("user_id", desc=False).limit(limit).execute()
         
         return result.data or []

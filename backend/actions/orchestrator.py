@@ -13,6 +13,67 @@ from models.user import CustomerProfile
 from models.persona import Persona
 
 
+from services.supabase_client import supabase_client
+
+# [Translation Maps] DB(Eng) -> User(Kor)
+# 1. Skin Type
+SKIN_TYPE_MAP = {
+    "Combination": "복합성",
+    "Dry": "건성",
+    "Oily": "지성",
+    "Dehydrated_Oily": "수분부족지성"
+}
+
+# 2. Skin Concerns
+CONCERN_MAP = {
+    "Sensitive": "민감성",
+    "Acne": "트러블",
+    "Lack_of_Elasticity": "탄력없음",
+    "Wrinkle": "주름",
+    "Dullness": "칙칙함",
+    "Pores": "모공",
+    "None": "고민없음"
+}
+
+# 3. Preferred Tone
+TONE_MAP = {
+    "Cool": "쿨톤",
+    "Warm": "웜톤"
+}
+
+# 4. Keywords
+KEYWORD_MAP_SIMPLIFIED = {
+    "Vegan": "비건",
+    "Clean_Beauty": "클린 뷰티",
+    "Hypoallergenic": "저자극",
+    "Dermatologist_Tested": "피부과 테스트 완료",
+    "Non_Comedogenic": "논코메도제닉",
+    "Fragrance_Free": "무향",
+    "Anti_Aging": "안티에이징",
+    "Firming": "탄력 케어",
+    "Moisture": "보습",
+    "Glow": "윤광",
+    "Premium": "프리미엄",
+    "Limited": "한정판",
+    "New_Arrival": "신상",
+    "Gift": "선물용",
+    "Sale": "할인",
+    "whitening": "미백",
+    "Nutrition": "영양공급",
+    "Big_Size": "대용량",
+    "One_plus_One": "1+1",
+    "free_gift": "사은품",
+    "Cica": "시카",
+    "PDRN": "피디알엔",
+    "Rethinol": "레티놀",
+    "Collab": "콜라보",
+    "Packaging": "패키징",
+    "Glitter": "글리터",
+    "Set_Item": "세트상품",
+    "Luxury": "럭셔리",
+    "Gift_Packaging": "선물포장"
+}
+
 class GraphState(TypedDict):
     """LangGraph State 정의"""
     user_id: str
@@ -74,8 +135,10 @@ def orchestrator_node(state: GraphState) -> GraphState:
     print("target_brand:", target_brand)
     
     if target_brand=="":
-        print("⚠️ Target Brand is empty, using default recommendation logic.")
-        recommended_brand = determine_recommended_brand(target_persona, [])
+        print("⚠️ Target Brand is empty, using DB-based recommendation logic.")
+        # [DB Query] Mock 대신 실제 DB 데이터 사용 (user_data 필터링 추가)
+        recent_brands = get_persona_recent_brands(target_persona, user_data)
+        recommended_brand = determine_recommended_brand(target_persona, recent_brands)
     else:
         recommended_brand = [target_brand]
     
@@ -91,69 +154,143 @@ def orchestrator_node(state: GraphState) -> GraphState:
 
 
 
-def generate_mock_recent_brands(personatype: int) -> List[str]:
+def get_persona_recent_brands(personatype: str, target_user: CustomerProfile) -> List[str]:
     """
-    사용자의 최근 이용 브랜드 리스트를 가중치 기반 랜덤으로 생성합니다.
-    
-    Args:
-        personatype: 전략 케이스 번호 (1-5)
-        
-    Returns:
-        랜덤하게 생성된 최근 이용 브랜드 리스트
+    Supabase 'customers' 테이블에서 
+    1) 해당 페르소나(persona_id)를 가지고
+    2) Target User와 [피부타입, 고민, 톤, 키워드]가 일치하는 유사 사용자들의
+    'brand_purchases' 데이터를 조회하여 통합 반환합니다.
     """
     try:
-        # 현재 파일(orchestrator.py)이 있는 위치 기준 (Relative Path)
-        current_dir = Path(__file__).parent
-        json_path = current_dir / "persona_db.json"
+        # P 접두사 제거
+        target_p = str(personatype)
+        print(f"🔎 [DB] Fetching similar users for persona: {target_p}")
         
-        if not json_path.exists():
+        # [Optimization] Apply Filters on DB Side to bypass 1000 limit issue.
+        # Reverse Map (Kor -> Eng)
+        # Note: Maps are many-to-one sometimes, but here we assume simple inversion works for main keys.
+        
+        query = supabase_client.client.table("user_data").select("*").eq("persona_id", target_p)
+
+        # 1. Preferred Tone Filter
+        # User input is Korean (e.g., "웜톤"). Find English key.
+        target_tone_eng = None
+        for k, v in TONE_MAP.items():
+            if v == target_user.preferred_tone:
+                target_tone_eng = k
+                break
+        
+        if target_tone_eng:
+             query = query.eq("preferred_tone", target_tone_eng)
+             
+        # 2. Skin Type Filter (Subset Containment)
+        # We want users who have AT LEAST the target types. (Or Exact equality?)
+        # For now, let's use 'contains' which is safer for finding candidates.
+        # User: ["건성"] -> DB must have "Dry"
+        target_skin_eng = []
+        for ut in target_user.skin_type:
+            for k, v in SKIN_TYPE_MAP.items():
+                if v == ut:
+                    target_skin_eng.append(k)
+                    break
+        
+        if target_skin_eng:
+            # Postgres JSONB contains: column @> value
+            query = query.contains("skin_type", target_skin_eng)
+
+        # Execute
+        resp = query.execute()
+            
+        # [Removed Fallback] User confirmed DB strictly uses numeric persona (e.g., '1', '2', '3')
+        # Sending 'P3' caused invalid input syntax error for numeric/json columns.
+        
+        if not resp.data:
+            print(f"⚠️ No users found for persona '{target_p}'.")
             return []
             
-        with open(json_path, "r", encoding="utf-8") as f:
-            persona_db = json.load(f)
-            
-        # 1. 전체 브랜드 리스트와 타겟 페르소나 브랜드 식별
-        all_brands = set()
-        target_brands = set()
+        # Python-side Filtering (Strict Matching with Translation)
+        similar_users_brands = []
         
-        key = str(personatype)
-        if key.lower().startswith('p'):
-            key = key[1:]
+        # Target User Data (Assuming Korean)
+        user_skin_type = set(target_user.skin_type)
+        user_skin_concerns = set(target_user.skin_concerns)
+        user_tone = target_user.preferred_tone
+        user_keywords = set(target_user.keywords)
         
-        for p_id, p_data in persona_db.items():
-            brands = p_data.get("recommended_brands", [])
-            for b in brands:
-                all_brands.add(b)
-                if p_id == key:
-                    target_brands.add(b)
+        match_count = 0
         
-        all_brands_list = list(all_brands)
-        print(f"🗂️ All Brands: {all_brands_list}")
-        
-        if not all_brands_list:
-            return []
-            
-        # 2. 가중치 설정
-        weights = []
-        for brand in all_brands_list:
-            if brand in target_brands:
-                weights.append(10) # 타겟 브랜드 가중치
-            else:
-                weights.append(1)  # 그 외 브랜드 가중치
+        for row in resp.data:
+            # Skip self
+            if row.get("user_id") == target_user.user_id:
+                continue
                 
-        # 3. 랜덤 개수 및 브랜드 추출
-        # 1~10개 사이의 브랜드를 랜덤하게 선택
-        count = random.randint(1, 10)
-        recent_brands = random.choices(all_brands_list, weights=weights, k=count)
+            # 1. Skin Type Match (Translate DB Eng -> Kor)
+            db_skin_types = row.get("skin_type", [])
+            row_skin_type_kor = set()
+            for t in db_skin_types:
+                # Map or keep original if not found
+                row_skin_type_kor.add(SKIN_TYPE_MAP.get(t, t))
+                
+            if row_skin_type_kor != user_skin_type:
+                continue
+                
+            # 2. Skin Concerns Match
+            db_concerns = row.get("skin_concerns", [])
+            row_concerns_kor = set()
+            for c in db_concerns:
+                row_concerns_kor.add(CONCERN_MAP.get(c, c))
+                
+            if row_concerns_kor != user_skin_concerns:
+                continue
+                
+            # 3. Tone Match
+            db_tone = row.get("preferred_tone")
+            row_tone_kor = TONE_MAP.get(db_tone, db_tone)
+            if row_tone_kor != user_tone:
+                # Try raw comparison just in case
+                if db_tone != user_tone:
+                    continue
+                
+            # 4. Keywords Match (Partial Overlap allowed or strict?)
+            # Since full translation map is missing, let's try direct comparison 
+            db_keywords = set(row.get("keywords", []))
+            # If raw match works
+            if db_keywords == user_keywords:
+                pass # Match
+            else:
+                # Try simple mapping
+                db_keywords_kor = set()
+                for k in db_keywords:
+                    # Try simplified map (map keys are MixedCase as provided by user)
+                    if k in KEYWORD_MAP_SIMPLIFIED:
+                        db_keywords_kor.add(KEYWORD_MAP_SIMPLIFIED[k])
+                    elif k.lower() in KEYWORD_MAP_SIMPLIFIED: # Fallback to lowercase check
+                        db_keywords_kor.add(KEYWORD_MAP_SIMPLIFIED[k.lower()]) 
+                    else:
+                        db_keywords_kor.add(k) # Keep original if no map
+                
+                if db_keywords_kor != user_keywords:
+                    # [Debug Log] Unmatched Keywords
+                    # print(f"  - Keyword Mismatch: DB({db_keywords_kor}) != User({user_keywords})")
+                    continue
+            
+            # Matched!
+            match_count += 1
+            purchases = row.get("brand_purchases", [])
+            if isinstance(purchases, list):
+                similar_users_brands.extend(purchases)
+            elif isinstance(purchases, str):
+                 similar_users_brands.extend([b.strip() for b in purchases.split(",") if b.strip()])
+                 
+        print(f"👥 Found {match_count} similar users (Same Profile).")
         
-        # 중복 허용 (많이 추출된 브랜드 = 많이 이용한 브랜드)
-        # recent_brands = list(dict.fromkeys(recent_brands))
-        
-        print(f"🎲 Mock Recent Brands (Persona {personatype}): {recent_brands}")
-        return recent_brands
+        all_brands = [b for b in similar_users_brands if b]
+
+        print(f"📦 Loaded Brands from Similar Users (Count: {len(all_brands)}): {all_brands[:10]}...")
+        return all_brands
 
     except Exception as e:
-        print(f"❌ Error generating mock recent brands: {e}")
+        print(f"❌ Error fetching brands from DB: {e}")
         return []
 
 
