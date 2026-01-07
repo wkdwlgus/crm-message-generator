@@ -12,6 +12,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Pre-download the ML model to ensure instant startup
+RUN python download_model.py
+
 # Expose port (HTTP default)
 EXPOSE 80
 
