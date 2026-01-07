@@ -30,7 +30,7 @@ jobs:
 
       - name: Build and push image to ACR
         run: |
-          az acr login --name ${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          echo ${{ secrets.ACR_PASSWORD }} | docker login ${{ secrets.AZURE_CONTAINER_REGISTRY }}.azurecr.io -u ${{ secrets.ACR_USERNAME }} --password-stdin
           docker build -t ${{ secrets.AZURE_CONTAINER_REGISTRY }}.azurecr.io/blooming-recsys:${{ github.sha }} ./RecSys
           docker push ${{ secrets.AZURE_CONTAINER_REGISTRY }}.azurecr.io/blooming-recsys:${{ github.sha }}
 
