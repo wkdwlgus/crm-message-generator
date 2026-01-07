@@ -41,6 +41,9 @@ jobs:
           containerAppName: 'blooming-recsys-beta'
           resourceGroup: 'DefaultResourceGroup-USW3'
           imageToDeploy: ${{ secrets.AZURE_CONTAINER_REGISTRY }}.azurecr.io/blooming-recsys:${{ github.sha }}
+          registryUrl: ${{ secrets.AZURE_CONTAINER_REGISTRY }}.azurecr.io
+          registryUsername: ${{ secrets.ACR_USERNAME }}
+          registryPassword: ${{ secrets.ACR_PASSWORD }}
           # Environment variables for the container
           environmentVariables: |
             OPENAI_API_KEY=secretref:openai-api-key
