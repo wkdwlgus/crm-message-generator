@@ -38,7 +38,7 @@ jobs:
         uses: azure/container-apps-deploy-action@v1
         with:
           containerAppName: 'blooming-recsys-beta'
-          resourceGroup: 'blooming-rg' # Replace with actual RG if different
+          resourceGroup: 'DefaultResourceGroup-USW3'
           imageToDeploy: ${{ secrets.AZURE_CONTAINER_REGISTRY }}.azurecr.io/blooming-recsys:${{ github.sha }}
           # Environment variables for the container
           environmentVariables: |
