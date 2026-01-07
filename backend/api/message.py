@@ -5,7 +5,6 @@ GET /message 엔드포인트
 from fastapi import APIRouter, Header, HTTPException, Query
 from models.message import MessageResponse, ErrorResponse
 from services.supabase_client import supabase_client
-from services.mock_data import get_mock_customer
 from services.user_service import get_customer_from_db, get_customer_list
 from graph import message_workflow
 from typing import Optional
@@ -35,7 +34,7 @@ async def get_customers_endpoint():
     description="고객 ID를 기반으로 페르소나에 맞춘 개인화 CRM 메시지를 생성합니다.",
 )
 async def generate_message(
-    x_user_id: str = Header("user_0001", description="고객 ID"),
+    x_user_id: str = Header("1", description="고객 ID"),
     channel: Optional[str] = Query("SMS", description="메시지 채널 (APPPUSH, SMS, KAKAO, EMAIL)"),
     reason: Optional[str] = Query("신제품 출시 이벤트", description="CRM 발송 이유 (날씨, 할인행사, 일반홍보)"),
     weather_detail: Optional[str] = Query(None, description="날씨 상세 정보 (예: 폭염 주의보, 건조한 가을) - reason='날씨'일 때 필수"),
@@ -74,7 +73,9 @@ async def generate_message(
                 )
 
     # 1. 고객 데이터 조회 (Supabase -> Fallback to Mock)
-    db_user = supabase_client.get_user(x_user_id)
+    db_user = supabase_client.get_user(x_user_id)  
+    print(f"🧐 Fetching user data for ID: {x_user_id}") 
+    print(f"🧐 Fetched DB User: {db_user}")  # DB 조회 결과 확인 (Debugging)
     
     customer = None
     
@@ -87,6 +88,9 @@ async def generate_message(
             # 사용자 요청에 따라 필수 4요소(피부타입, 고민, 톤, 키워드) 위주로 구성하고 나머지는 자동 처리
             customer = CustomerProfile(
                 user_id=db_user.get("user_id"),
+                name="00",  # 항상 '00'으로 고정
+                age_group=db_user.get("age_group", "Unknown"),
+                membership_level=db_user.get("membership_level", "General"),
 
                 # [Core Elements] 사용자가 지정한 핵심 4요소
                 skin_type=db_user.get("skin_type", []),
@@ -100,12 +104,9 @@ async def generate_message(
             print(f"Error converting DB user data: {e}")
             customer = None
 
-    # Fallback to Mock Data if DB failed or empty
+    # Fallback 없음: DB 실패 시 에러 처리
     if not customer:
-        print(f"User '{x_user_id}' not found in DB. Trying Mock Data...")
-        customer = get_mock_customer(x_user_id)
-    
-    if not customer:
+        print(f"User '{x_user_id}' not found in DB.")
         raise HTTPException(
             status_code=404,
             detail=f"고객 ID '{x_user_id}'를 찾을 수 없습니다."

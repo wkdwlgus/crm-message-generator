@@ -11,16 +11,32 @@ export class ApiService {
    * 1. 개인화 메시지 생성 API 호출
    * @param userId - 고객 ID (헤더로 전달)
    * @param channel - 메시지 채널 
+   * @param options - 추가 옵션 (reason, weather_detail, brand, persona)
    * @returns 생성된 메시지 응답
    */
   static async generateMessage(
     userId: string,
-    channel: ChannelType = 'SMS'
+    channel: ChannelType = 'SMS',
+    options: {
+      reason?: string;
+      weather_detail?: string;
+      brand?: string;
+      persona?: string;
+    } = {}
   ): Promise<{ data: any }> { 
     
-    // 백엔드: GET /message (Query: channel, Header: x-user-id)
+    // Query Parameter 구성
+    const params = new URLSearchParams({
+      channel: channel,
+      ...(options.reason && { reason: options.reason }),
+      ...(options.weather_detail && { weather_detail: options.weather_detail }),
+      ...(options.brand && { brand: options.brand }),
+      ...(options.persona && { persona: options.persona }),
+    });
+
+    // 백엔드: GET /message
     const response = await fetch(
-      `${API_BASE_URL}/message?channel=${channel}`,
+      `${API_BASE_URL}/message?${params.toString()}`,
       {
         method: 'GET',
         headers: {

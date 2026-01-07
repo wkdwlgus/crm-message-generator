@@ -14,6 +14,11 @@ function App() {
   const [channel, setChannel] = useState<ChannelType | null>(null);
   const [loading, setLoading] = useState(false);
   
+  // 3. Context Options (Demo용)
+  const [brand, setBrand] = useState('이니스프리');
+  const [reason, setReason] = useState('신제품 출시 이벤트');
+  const [weatherDetail, setWeatherDetail] = useState('');
+
   // 고객 ID 및 데이터 관리 (실제 데이터 연동)
   const [userId, setUserId] = useState<string>('');
   const [customers, setCustomers] = useState<CustomerPersona[]>([]);
@@ -26,6 +31,13 @@ function App() {
 
   // 참조(Ref) 정의
   const mainRef = useRef<HTMLDivElement | null>(null);
+
+  // [Fix] 안전한 렌더링을 위한 헬퍼 함수
+  const safeRender = (value: any, fallback = ''): string => {
+    if (value === null || value === undefined) return fallback;
+    if (typeof value === 'object') return JSON.stringify(value); // 객체라면 문자열로 변환
+    return String(value);
+  };
 
   // 생성 가능 여부 체크 (고객 ID와 채널이 있어야 함)
   const canGenerate = userId !== '' && channel !== null && !loading;
@@ -130,7 +142,17 @@ function App() {
     setMessage(null);
     try {
       // ApiService 호출
-      const response = await ApiService.generateMessage(userId, channel);
+      // P1, P2... 라벨은 allPersonas의 인덱스로 추정 (P1 = index 0)
+      const personaLabel = selectedCustomer 
+        ? `P${allPersonas.findIndex(p => p.user_id === selectedCustomer.user_id) + 1}` 
+        : 'P1';
+
+      const response = await ApiService.generateMessage(userId, channel, {
+        brand,
+        reason,
+        weather_detail: reason === '날씨' ? weatherDetail : undefined,
+        persona: personaLabel
+      });
       setMessage(response.data);
     } catch (err: any) {
       console.error(err);
@@ -145,6 +167,9 @@ function App() {
     setMessage(null);           // 결과 메시지 지우기
     setSelectedCustomer(null);  // 선택된 고객 해제
     setChannel(null);          // 선택된 채널 해제
+    setBrand('이니스프리');    // 브랜드 초기화
+    setReason('신제품 출시 이벤트'); // 이유 초기화
+    setWeatherDetail('');      // 날씨 상세 초기화
   };
 
   // 고객은 유지하고 결과창만 닫음
@@ -256,6 +281,55 @@ function App() {
                 <ChannelSelector selected={channel} onSelect={setChannel} disabled={loading} />
               </div>
             </div>
+
+            <h2 className="font-black mb-4 mt-8 text-sm border-b-2 border-black pb-1 inline-block">3. CONTEXT (DEMO)</h2>
+             <div className="space-y-4 text-left">
+               
+               {/* Brand Selector */}
+               <div>
+                 <label className="block text-xs font-bold mb-1">BRAND</label>
+                 <select 
+                   value={brand} 
+                   onChange={(e) => setBrand(e.target.value)}
+                   className="w-full border-2 border-black p-2 text-sm font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus:outline-none focus:bg-yellow-50"
+                 >
+                   <option value="이니스프리">🌿 이니스프리 (Innisfree)</option>
+                   <option value="설화수">🌸 설화수 (Sulwhasoo)</option>
+                   <option value="헤라">💄 헤라 (HERA)</option>
+                   <option value="에뛰드">🎀 에뛰드 (Etude)</option>
+                 </select>
+               </div>
+
+               {/* Reason Selector */}
+               <div>
+                 <label className="block text-xs font-bold mb-1">CRM REASON</label>
+                 <select 
+                   value={reason} 
+                   onChange={(e) => setReason(e.target.value)}
+                   className="w-full border-2 border-black p-2 text-sm font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] focus:outline-none focus:bg-yellow-50"
+                 >
+                   <option value="신제품 출시 이벤트">🚀 신제품 출시 (New Product)</option>
+                   <option value="날씨">🌦️ 날씨 기반 추천 (Weather)</option>
+                   <option value="할인행사">💸 할인 행사 (Sale)</option>
+                   <option value="일반홍보">📢 일반 홍보 (General)</option>
+                 </select>
+               </div>
+
+               {/* Weather Detail Input (Conditional) */}
+               {reason === '날씨' && (
+                 <div className="animate-fade-in-up">
+                   <label className="block text-xs font-bold mb-1 text-blue-600">WEATHER DETAIL</label>
+                   <input
+                     type="text"
+                     value={weatherDetail}
+                     onChange={(e) => setWeatherDetail(e.target.value)}
+                     placeholder="예: 비가 오고 습함, 폭염 주의보"
+                     className="w-full border-2 border-blue-500 p-2 text-sm font-bold shadow-[2px_2px_0px_0px_rgba(59,130,246,1)] focus:outline-none bg-blue-50"
+                   />
+                 </div>
+               )}
+
+             </div>
           </div>
 
           <div className="glass-card bg-[#E0F2FE] border-black border-[3px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
@@ -275,21 +349,37 @@ function App() {
               <div className="text-left space-y-3">
                 {/* 이름 & 등급 */}
                 <div className="flex justify-between items-center bg-white/50 p-2 rounded border border-black/5">
-                  <span className="text-sm font-black">{selectedCustomer.name}</span>
-                  <span className="bg-black text-white px-2 py-0.5 text-[10px] font-bold rounded-full">
-                    {selectedCustomer.membership_level}
+                  <span className="text-sm font-black text-ellipsis overflow-hidden whitespace-nowrap">
+                    {safeRender(selectedCustomer.name, '고객')}
+                  </span>
+                  <span className="bg-black text-white px-2 py-0.5 text-[10px] font-bold rounded-full shrink-0">
+                    {safeRender(selectedCustomer.membership_level, 'GEN')}
                   </span>
                 </div>
                 
                 {/* 태그 영역 (피부타입 + 키워드) */}
                 <div className="space-y-1">
                   <p className="text-[9px] font-bold text-gray-500 uppercase">Tags & Keywords</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {[...(selectedCustomer.skin_type || []), ...(selectedCustomer.keywords || [])].slice(0, 5).map((tag, i) => (
-                      <span key={i} className="bg-white border-2 border-black px-1.5 py-0.5 text-[9px] font-bold shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
-                        #{tag}
-                      </span>
-                    ))}
+                  <div className="flex flex-wrap gap-1.5 min-h-[20px]">
+                    {/* 안전하게 배열인지 확인 후 렌더링 */}
+                    {(() => {
+                        const skinTypes = Array.isArray(selectedCustomer.skin_type) ? selectedCustomer.skin_type : [];
+                        const keywords = Array.isArray(selectedCustomer.keywords) ? selectedCustomer.keywords : [];
+                        const tags = [...skinTypes, ...keywords];
+                        
+                        // 문자열로 데이터가 들어올 경우에 대한 방어 로직 (CSV 등)
+                        if (tags.length === 0 && typeof selectedCustomer.skin_type === 'string') {
+                            tags.push(selectedCustomer.skin_type);
+                        }
+
+                        if (tags.length === 0) return <span className="text-[9px] text-gray-400">No tags</span>;
+
+                        return tags.slice(0, 5).map((tag, i) => (
+                        <span key={i} className="bg-white border-2 border-black px-1.5 py-0.5 text-[9px] font-bold shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]">
+                            #{safeRender(tag)}
+                        </span>
+                        ));
+                    })()}
                   </div>
                 </div>
 
@@ -298,15 +388,15 @@ function App() {
                   <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Preferred Tone</p>
                   <p className="text-[11px] leading-snug text-gray-800 bg-yellow-100 p-2 border border-black rounded-sm relative">
                     <span className="absolute -top-1.5 -left-1 text-[15px]">🎨</span>
-                    <span className="font-black">
-                     {selectedCustomer.preferred_tone}
+                    <span className="font-black break-all">
+                     {safeRender(selectedCustomer.preferred_tone, ' - ')}
                     </span>
                   </p>
-                  <p className="text-[9px] font-bold text-gray-500 uppercase mb-1">Persona Category</p>
+                  <p className="text-[9px] font-bold text-gray-500 uppercase mb-1 mt-2">Persona Category</p>
                   <p className="text-[11px] leading-snug text-gray-800 bg-yellow-100 p-2 border border-black rounded-sm relative">
                     <span className="absolute -top-1.5 -left-1 text-[15px]">📂</span>
-                    <span className="font-black">
-                      {selectedCustomer.persona_category}
+                    <span className="font-black break-all">
+                      {safeRender(selectedCustomer.persona_category, ' - ')}
                     </span>
                   </p>
                 </div>

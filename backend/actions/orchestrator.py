@@ -64,14 +64,15 @@ def orchestrator_node(state: GraphState) -> GraphState:
     if crm_reason == "날씨":
         print(f"  - Detail: {state.get('weather_detail', 'N/A')}")
 
-    # [Mock Data] 최근 이용 브랜드 랜덤 생성 (테스트용)
-    # 실제 user_data 대신 랜덤하게 생성된 브랜드 리스트를 사용하고 싶다면 여기서 활용 가능
-    # 현재 로직에서는 determine_recommended_brand 내부에서 랜덤 추출하므로 
-    # 이 리스트는 로그 출력이나 추후 로직 확장에 사용
+    # [Mock Data] 최근 이용 브랜드 랜덤 생성 (테스트용) -> 제거 또는 필요 시 다른 로직으로 대체
+    # 여기서는 Mock 로직을 제거하고 단순히 target_brand가 없으면 기본 로직(빈 리스트 등)을 타게 수정하거나
+    # determine_recommended_brand 내부에서도 Mock 사용을 제거해야 함.
+    # 일단 요구사항에 따라 mock removal.
+    
     if target_brand=="":
-        mock_recent_brands = generate_mock_recent_brands(target_persona)
-        # 페르소나 적합도 + 최근 이용 빈도(Mock Data) 기반 랭킹 산정
-        recommended_brand = determine_recommended_brand(target_persona, mock_recent_brands)
+        # Mock 로직 제거: 최근 이용 브랜드 데이터가 없으면 추천 로직이 동작하지 않거나 기본값 사용
+        # 최근 구매 이력 조회 로직 제거 요청에 따라 빈 리스트 전달
+        recommended_brand = determine_recommended_brand(target_persona, [])
     else:
         recommended_brand = [target_brand]
     
@@ -85,42 +86,6 @@ def orchestrator_node(state: GraphState) -> GraphState:
     
     return state
 
-
-def get_recent_brands(user_data: CustomerProfile, days: int = 30) -> Set[str]:
-    """
-    최근 N일 이내에 상호작용한(구매, 장바구니, 조회) 브랜드 목록을 추출합니다.
-    """
-    recent_brands = set()
-    cutoff_date = datetime.now() - timedelta(days=days)
-    
-    # 1. 구매 이력 확인
-    for item in user_data.purchase_history:
-        try:
-            p_date = datetime.strptime(item.purchase_date, "%Y-%m-%d")
-            if p_date >= cutoff_date:
-                recent_brands.add(item.brand)
-        except ValueError:
-            continue
-            
-    # 2. 장바구니 확인
-    for item in user_data.cart_items:
-        try:
-            # added_at이 있는 경우
-            if hasattr(item, 'added_at'):
-                a_date = datetime.strptime(item.added_at, "%Y-%m-%d")
-                if a_date >= cutoff_date and item.brand:
-                    recent_brands.add(item.brand)
-        except ValueError:
-            continue
-
-    # 3. 최근 본 상품 (날짜 정보가 없으면 최근으로 간주하거나 제외)
-    # 모델 정의상 날짜가 없으므로, 최근 본 상품은 모두 포함시킴 (또는 제외)
-    # 여기서는 최근 본 상품도 관심 브랜드로 포함
-    for item in user_data.recently_viewed_items:
-        if item.brand:
-            recent_brands.add(item.brand)
-            
-    return recent_brands
 
 
 def generate_mock_recent_brands(personatype: int) -> List[str]:
@@ -202,6 +167,9 @@ def determine_recommended_brand(personatype: int, recent_brands: List[str]) -> L
         점수순으로 정렬된 추천 브랜드 리스트
     """
     try:
+        # [Debugging Log]
+        print(f"🕵️ Determine Brand Input - Persona: {personatype}, Recent Brands: {recent_brands}")
+
         # 현재 파일(orchestrator.py)과 같은 디렉토리에 있는 persona_db_v2.json 참조
         current_dir = Path(r"c:\Users\helen\Desktop\kt cloud tech up\advanced_project\blooming-v1\backend\actions")        
         json_path = current_dir / "persona_db.json"
