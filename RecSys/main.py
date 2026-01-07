@@ -11,6 +11,18 @@ from models import CustomerProfile
 # Load environment variables
 load_dotenv()
 
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+logger.info("Initializing FastAPI app...")
+try:
+    from recommendation_model_API import get_recommendation
+    logger.info("Imported recommendation_model_API successfully")
+except Exception as e:
+    logger.error(f"Error importing recommendation_model_API: {e}")
+    # Don't re-raise yet, let app start if possible to see logs
+
 app = FastAPI(
     title="Blooming Recommendation System",
     description="API for recommending products based on user profile",
@@ -55,5 +67,10 @@ async def recommend(request: RecommendationRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    print("Starting RecSys server on port 80...")
+    # This block is for local development
+    import uvicorn
+    logger.info("Starting RecSys server (main block) on port 80...")
     uvicorn.run("main:app", host="0.0.0.0", port=80)
+else:
+    # This block runs when imported (e.g., by uvicorn worker in Docker)
+    logger.info("RecSys app module loaded")
