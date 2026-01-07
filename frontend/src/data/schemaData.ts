@@ -14,7 +14,8 @@ export const SKIN_CONCERN_OPTIONS = {
   "Wrinkle": "주름",
   "Dullness": "칙칙함",
   "Pores": "모공",
-  "None": "고민없음"
+  "None": "고민없음",
+  "Redness": "붉은기"
 } as const;
 
 // 3. Preferred Tone (Single-select)

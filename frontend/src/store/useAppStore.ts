@@ -2,7 +2,8 @@ import { create } from 'zustand';
 import { PERSONA_DB } from '../data/PersonaData';
 import { PERSONA_OPTIONS, type PersonaOptionSet } from '../data/personaOptions';
 import { SKIN_TYPE_OPTIONS, SKIN_CONCERN_OPTIONS, TONE_OPTIONS, KEYWORD_OPTIONS } from '../data/schemaData';
-import { CustomerDB } from '../services/customerService';
+import type { CustomerDB } from '../services/customerService';
+import { LogService } from '../services/logService';
 
 // 데이터 타입 정의
 export interface SimulationData {
@@ -37,6 +38,12 @@ interface AppState {
   activeOptions: PersonaOptionSet;
   customerList: CustomerDB[];
   selectedCustomer: CustomerDB | null;
+  messageLogs: any[];
+  loadLogs: (userId: string) => Promise<void>;
+  season: string | null;
+  weatherDetail: string | null;
+
+
 
   // 액션
   setPersonas: (list: Persona[]) => void;
@@ -50,6 +57,8 @@ interface AppState {
   setGeneratedResult: (result: string | null) => void;
   setCustomerList: (list: CustomerDB[]) => void;
   setSelectedCustomer: (customer: CustomerDB | null) => void;
+  setSeason: (season: string | null) => void;
+  setWeatherDetail: (detail: string | null) => void;
 
   // 기능 액션
   resetAll: () => void;
@@ -74,7 +83,6 @@ function buildDefaultOptions(): PersonaOptionSet {
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
-  // ✅ 기존 초기값들
   personas: Object.values(PERSONA_DB).map((p) => ({
     ...p,
     keywords: [...p.keywords],
@@ -88,12 +96,23 @@ export const useAppStore = create<AppState>((set, get) => ({
   isGenerating: false,
   generatedResult: null,
   activeOptions: buildDefaultOptions(),
-
-  // ✅ 추가: 고객 리스트/선택 고객
   customerList: [],
   selectedCustomer: null,
-
-  // ✅ 기존 세터
+  messageLogs: [],
+  loadLogs: async (userId: string) => {
+    try {
+      const logs = await LogService.getLogsByUser(userId);
+      set({ messageLogs: logs });
+    } catch (error) {
+      console.error("Failed to load logs:", error);
+    }
+  },
+  season: null,
+  weatherDetail: null,
+ 
+  // 액션 구현
+  setSeason: (season) => set({ season, weatherDetail: null }),
+  setWeatherDetail: (detail) => set({ weatherDetail: detail }),
   setPersonas: (list) => set({ personas: list }),
   setSelectedPersonaId: (id) => set({ selectedPersonaId: id }),
   setSimulationData: (newData) =>
@@ -106,31 +125,32 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSelectedChannel: (channel) => set({ selectedChannel: channel }),
   setIsGenerating: (val) => set({ isGenerating: val }),
   setGeneratedResult: (result) => set({ generatedResult: result }),
-
-  // ✅ 추가: 고객 리스트 세터
   setCustomerList: (list) => set({ customerList: list }),
-
-  // ✅ 추가: 고객 선택 시 simulationData에 반영
   setSelectedCustomer: (customer) =>
     set((state) => {
       if (!customer) {
         return {
           selectedCustomer: null,
+          selectedPersonaId: null,
+          activeOptions: buildDefaultOptions(),
           simulationData: { ...INITIAL_SIMULATION_DATA },
         };
       }
 
+      const allowed: PersonaOptionSet = {
+        skinTypes: customer.skin_type ?? [],
+        concerns: customer.skin_concerns ?? [],
+        tone: customer.preferred_tone ?? [],
+        keywords: customer.keywords ?? [],
+    };
+
       return {
         selectedCustomer: customer,
-        simulationData: {
-          ...state.simulationData,
-          skin_type: customer.skin_type ?? [],
-          skin_concerns: customer.skin_concerns ?? [],
-          preferred_tone: customer.preferred_tone ?? 'Neutral',
-          keywords: customer.keywords ?? [],
-        },
-      };
-    }),
+        selectedPersonaId: customer.persona_category?.id ?? null,
+        activeOptions: allowed,
+        simulationData: { ...INITIAL_SIMULATION_DATA },
+    };
+  }),
 
   // ✅ 리셋 기능 (고객도 같이 리셋)
   resetAll: () =>
@@ -147,8 +167,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       isGenerating: false,
       generatedResult: null,
     }),
-
-  // ✅ 페르소나 선택 기능 (고객 선택이 있으면 그 값으로 simulationData 다시 채움)
+  // ✅ 페르소나 선택 시 활성 옵션 및 시뮬레이션 데이터 초기화
   selectPersona: (id) => {
     if (!id) {
       set({
@@ -157,7 +176,6 @@ export const useAppStore = create<AppState>((set, get) => ({
         simulationData: { ...INITIAL_SIMULATION_DATA },
       });
 
-      // ✅ 고객이 선택돼 있으면 초기화 후 다시 고객값 주입
       const customer = get().selectedCustomer;
       if (customer) {
         get().setSelectedCustomer(customer);

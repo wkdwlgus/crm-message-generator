@@ -1,13 +1,22 @@
 import { supabase } from '../lib/supabaseClient';
 
+interface PersonaCategory {
+    id: string;
+    desc: string;
+    name: string;
+    tone: string;
+    keywords: string[];
+}
+
 // 1. Supabase 테이블 스키마 
 export interface CustomerDB {
   user_id: string;    
   name: string; 
   skin_type: string[];
   skin_concerns: string[];
-  preferred_tone: string;
+  preferred_tone: string[];
   keywords: string[];
+  persona_category: PersonaCategory;
 }
 
 export const CustomerService = {
