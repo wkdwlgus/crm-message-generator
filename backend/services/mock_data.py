@@ -7,7 +7,6 @@ from models.user import (
     CouponProfile, LastEngagement, PurchaseHistoryItem
 )
 from models.product import Product, ProductCategory, ProductPrice, ProductReview, ProductAnalytics
-from models.brand import BrandProfile
 from typing import Optional
 
 
@@ -192,31 +191,6 @@ MOCK_PRODUCTS = {
 }
 
 
-# Mock 브랜드 데이터
-MOCK_BRANDS = {
-    "Sulwhasoo": BrandProfile(
-        brand_name="Sulwhasoo",
-        target_demographic="40대+ 프리미엄 고객",
-        tone_manner_style="sophisticated",
-        tone_manner_examples=[
-            "김아모레 고객님, 세월의 지혜가 담긴 설화수와 함께 피부 본연의 아름다움을 되찾으세요.",
-            "자연에서 얻은 귀한 성분으로 정성껏 빚어낸 설화수의 가치를 경험하시기 바랍니다.",
-            "VVIP 고객님께 특별한 혜택을 준비했습니다. 한 해 동안 보내주신 사랑에 감사드리며, 더욱 빛나는 피부를 위한 프리미엄 케어를 제안드립니다."
-        ]
-    ),
-    "Hera": BrandProfile(
-        brand_name="헤라",
-        target_demographic="20-30대 트렌디한 여성",
-        tone_manner_style="youthful",
-        tone_manner_examples=[
-            "박뷰티 님! 헤라의 신상품이 도착했어요. 지금 바로 확인해보세요!",
-            "완벽한 메이크업의 시작, 헤라 블랙 쿠션으로 하루종일 빛나는 피부를 완성하세요.",
-            "고객님만을 위한 특별 할인! 이번 기회를 놓치지 마세요 💄"
-        ]
-    )
-}
-
-
 def get_mock_customer(user_id: str) -> Optional[CustomerProfile]:
     """
     Mock 고객 데이터 조회
@@ -241,19 +215,6 @@ def get_mock_product(product_id: str) -> Optional[Product]:
         Product 또는 None
     """
     return MOCK_PRODUCTS.get(product_id)
-
-
-def get_mock_brand(brand_name: str) -> Optional[BrandProfile]:
-    """
-    Mock 브랜드 데이터 조회
-    
-    Args:
-        brand_name: 브랜드명
-        
-    Returns:
-        BrandProfile 또는 None
-    """
-    return MOCK_BRANDS.get(brand_name)
 
 
 def recommend_product_for_customer(customer: CustomerProfile) -> Product:

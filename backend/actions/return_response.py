@@ -5,7 +5,7 @@ Return Response Node
 import json
 import os
 import random
-from typing import TypedDict, Optional
+from typing import TypedDict
 from models.user import CustomerProfile
 from models.message import GeneratedMessage, MessageResponse
 
@@ -14,9 +14,6 @@ class GraphState(TypedDict):
     """LangGraph State 정의"""
     user_id: str
     user_data: CustomerProfile
-    persona_id: Optional[str]
-    intention: str
-    strategy: int
     recommended_product_id: str
     product_data: dict
     brand_tone: dict
@@ -75,11 +72,18 @@ def _get_brand_fallback_message(brand_name: str, channel: str, customer_name: st
         print(f"⚠️ Fallback 메시지 생성 실패: {e}")
         return f"{customer_name}님, 특별한 혜택을 준비했습니다. 자세한 내용은 앱에서 확인해주세요."
 
-async def return_response_node(state: GraphState) -> dict:
+
+def return_response_node(state: GraphState) -> dict:
     """
     Return Response Node
     
     최종 응답 데이터를 생성합니다.
+    
+    Args:
+        state: LangGraph State
+        
+    Returns:
+        API 응답 딕셔너리
     """
     if not state.get("compliance_passed", False):
         # Compliance 실패 시 브랜드별 Fallback 응답
@@ -100,12 +104,33 @@ async def return_response_node(state: GraphState) -> dict:
         print(f"   브랜드: {brand_name}, 채널: {channel}, 고객: {customer_name}")
         print(f"   메시지: {fallback_message}")
         
-        state["message"] = fallback_message
-        state["success"] = True
-        return state
+        return {
+            "success": True,
+            "message": fallback_message
+        }
     
     # 성공 응답 생성
-    print(f"✅ 최종 응답 생성: user={state['user_id']}, message={state['message'][:50]}...")
-    state["success"] = True
+    strategy_input = state["strategy"]
+    persona_id = "default_persona"
+    if isinstance(strategy_input, dict):
+        persona_id = strategy_input.get("persona_id", "default_persona")
     
-    return state
+    generated_message = GeneratedMessage(
+        user_id=state["user_id"],
+        message_text=state["message"],
+        channel=state.get("channel", "SMS"),
+        product_id=state["recommended_product_id"],
+        persona_id=persona_id,
+        compliance_passed=state.get("compliance_passed", True),  # 🚨 추가 필수
+        retry_count=state.get("retry_count", 0),
+    )
+    
+    response = MessageResponse(
+        message=generated_message.message_text,
+        user=generated_message.user_id,
+        method=generated_message.channel,
+    )
+
+    print(f"✅ 최종 응답 생성 response: {response}")
+    
+    return response.model_dump()

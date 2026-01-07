@@ -29,7 +29,6 @@ class GraphState(TypedDict):
     user_data: CustomerProfile
     persona_id: Optional[str]
     recommended_brand: List[str]
-    strategy: int
     recommended_product_id: str
     product_data: dict
     brand_tone: dict
@@ -45,6 +44,7 @@ class GraphState(TypedDict):
     llm_reasoning: str
     confidence_score: float
     retrieved_legal_rules: list[Dict[str, Any]]  # 캐싱용: 한 번 검색한 규칙 재사용
+
 
 # Supabase 클라이언트 (선택적 - Rule DB가 없으면 Mock 사용)
 try:
