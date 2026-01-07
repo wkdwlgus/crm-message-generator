@@ -2,12 +2,8 @@
 Mock Data Service
 Supabase 연결 전까지 사용할 Mock 데이터 제공
 """
-from models.user import (
-    CustomerProfile, LastPurchase, ShoppingBehavior, 
-    CouponProfile, LastEngagement, PurchaseHistoryItem
-)
+from models.user import CustomerProfile
 from models.product import Product, ProductCategory, ProductPrice, ProductReview, ProductAnalytics
-from models.brand import BrandProfile
 from typing import Optional
 
 
@@ -15,103 +11,24 @@ from typing import Optional
 MOCK_CUSTOMERS = {
     "user_12345": CustomerProfile(
         user_id="user_12345",
-        name="김아모레",
-        age_group="30s",
-        gender="F",
-        membership_level="VVIP",
         skin_type=["Dry", "Sensitive"],
         skin_concerns=["Wrinkle", "Dullness"],
         preferred_tone="Warm_Spring",
-        keywords=["Vegan", "Clean_Beauty", "Anti-aging"],
-        acquisition_channel="Instagram_Ad",
-        average_order_value=150000,
-        average_repurchase_cycle_days=45,
-        repurchase_cycle_alert=True,
-        last_purchase=LastPurchase(
-            date="2024-10-01",
-            product_id="SW-SERUM-001",
-            product_name="설화수 자음생 에센스"
-        ),
-        purchase_history=[
-            PurchaseHistoryItem(
-                brand="설화수",
-                category="Serum",
-                purchase_date="2024-10-01"
-            ),
-            PurchaseHistoryItem(
-                brand="헤라",
-                category="Lip",
-                purchase_date="2024-08-15"
-            )
-        ],
-        shopping_behavior=ShoppingBehavior(
-            event_participation="High",
-            cart_abandonment_rate="Frequent",
-            price_sensitivity="Medium"
-        ),
-        coupon_profile=CouponProfile(
-            history=["WELCOME_10", "BDAY_2024"],
-            propensity="Discount_Seeker",
-            preferred_type="Percentage_Off"
-        ),
-        last_engagement=LastEngagement(
-            visit_date="2024-11-20",
-            click_date="2024-11-20",
-            last_visit_category="Eye Cream"
-        ),
-        cart_items=[],
-        recently_viewed_items=[
-            {"id": "SW-CREAM-001", "name": "설화수 자음생 크림", "brand": "설화수"},
-            {"id": "HR-POWDER-01", "name": "헤라 센슈얼 파우더 매트", "brand": "헤라"}
-        ]
+        keywords=["Vegan", "Clean_Beauty", "Anti-aging"]
     ),
     "user_67890": CustomerProfile(
         user_id="user_67890",
-        name="박뷰티",
-        age_group="20s",
-        gender="F",
-        membership_level="Gold",
         skin_type=["Oily", "Combination"],
         skin_concerns=["Acne", "Pore"],
         preferred_tone="Cool_Summer",
-        keywords=["Trendy", "SNS_Popular", "Budget-friendly"],
-        acquisition_channel="Naver_Search",
-        average_order_value=80000,
-        average_repurchase_cycle_days=60,
-        repurchase_cycle_alert=False,
-        last_purchase=LastPurchase(
-            date="2024-09-15",
-            product_id="HR-CUSHION-02",
-            product_name="헤라 블랙 쿠션"
-        ),
-        purchase_history=[
-            PurchaseHistoryItem(
-                brand="헤라",
-                category="Foundation",
-                purchase_date="2024-09-15"
-            )
-        ],
-        shopping_behavior=ShoppingBehavior(
-            event_participation="Medium",
-            cart_abandonment_rate="Occasional",
-            price_sensitivity="High"
-        ),
-        coupon_profile=CouponProfile(
-            history=["FIRST_ORDER"],
-            propensity="Discount_Seeker",
-            preferred_type="Percentage_Off"
-        ),
-        last_engagement=LastEngagement(
-            visit_date="2024-12-01",
-            click_date="2024-12-01",
-            last_visit_category="Makeup"
-        ),
-        cart_items=[],
-        recently_viewed_items=[
-            # "헤라 립스틱", "라네즈 워터 뱅크"
-            {"id": "HR-LIPSTICK-01", "name": "헤라 센슈얼 립스틱", "brand": "Hera"},
-            {"id": "LZ-WATERBANK-01", "name": "라네즈 워터 뱅크 모이스처 크림", "brand": "Laneige"}
-            ]
+        keywords=["Trendy", "SNS_Popular", "Budget-friendly"]
+    ),
+    "user_0001": CustomerProfile(
+        user_id="user_0001",
+        skin_type=["Dry"],
+        skin_concerns=["Pore", "Sebum"],
+        preferred_tone="Cool_Summer",
+        keywords=["Pore_Care", "Oil_Control"]
     )
 }
 
@@ -192,31 +109,6 @@ MOCK_PRODUCTS = {
 }
 
 
-# Mock 브랜드 데이터
-MOCK_BRANDS = {
-    "Sulwhasoo": BrandProfile(
-        brand_name="Sulwhasoo",
-        target_demographic="40대+ 프리미엄 고객",
-        tone_manner_style="sophisticated",
-        tone_manner_examples=[
-            "김아모레 고객님, 세월의 지혜가 담긴 설화수와 함께 피부 본연의 아름다움을 되찾으세요.",
-            "자연에서 얻은 귀한 성분으로 정성껏 빚어낸 설화수의 가치를 경험하시기 바랍니다.",
-            "VVIP 고객님께 특별한 혜택을 준비했습니다. 한 해 동안 보내주신 사랑에 감사드리며, 더욱 빛나는 피부를 위한 프리미엄 케어를 제안드립니다."
-        ]
-    ),
-    "Hera": BrandProfile(
-        brand_name="헤라",
-        target_demographic="20-30대 트렌디한 여성",
-        tone_manner_style="youthful",
-        tone_manner_examples=[
-            "박뷰티 님! 헤라의 신상품이 도착했어요. 지금 바로 확인해보세요!",
-            "완벽한 메이크업의 시작, 헤라 블랙 쿠션으로 하루종일 빛나는 피부를 완성하세요.",
-            "고객님만을 위한 특별 할인! 이번 기회를 놓치지 마세요 💄"
-        ]
-    )
-}
-
-
 def get_mock_customer(user_id: str) -> Optional[CustomerProfile]:
     """
     Mock 고객 데이터 조회
@@ -243,19 +135,6 @@ def get_mock_product(product_id: str) -> Optional[Product]:
     return MOCK_PRODUCTS.get(product_id)
 
 
-def get_mock_brand(brand_name: str) -> Optional[BrandProfile]:
-    """
-    Mock 브랜드 데이터 조회
-    
-    Args:
-        brand_name: 브랜드명
-        
-    Returns:
-        BrandProfile 또는 None
-    """
-    return MOCK_BRANDS.get(brand_name)
-
-
 def recommend_product_for_customer(customer: CustomerProfile) -> Product:
     """
     고객 정보 기반 간단한 상품 추천 로직 (Mock)
@@ -266,13 +145,10 @@ def recommend_product_for_customer(customer: CustomerProfile) -> Product:
     Returns:
         추천 상품
     """
-    # 간단한 추천 로직: 연령대와 피부타입 기반
-    if customer.age_group in ["40s", "50s+"] and "Dry" in customer.skin_type:
-        # 40대 이상 건성 피부 → 설화수 에센스
+    # 간단한 추천 로직: 피부타입 기반
+    if "Dry" in customer.skin_type:
+        # 건성 피부 → 설화수 에센스
         return MOCK_PRODUCTS["SW-SERUM-001"]
-    elif customer.age_group in ["20s", "30s"]:
-        # 20-30대 → 헤라 쿠션
-        return MOCK_PRODUCTS["HR-CUSHION-02"]
     else:
-        # 기본 추천
-        return MOCK_PRODUCTS["HR-FOUNDATION-01"]
+        # 그 외 -> 헤라 쿠션
+        return MOCK_PRODUCTS["HR-CUSHION-02"]
