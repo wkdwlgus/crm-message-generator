@@ -55,4 +55,5 @@ async def recommend(request: RecommendationRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
+    print("Starting RecSys server on port 80...")
     uvicorn.run("main:app", host="0.0.0.0", port=80)

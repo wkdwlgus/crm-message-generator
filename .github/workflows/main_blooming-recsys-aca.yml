@@ -46,8 +46,8 @@ jobs:
           registryPassword: ${{ secrets.ACR_PASSWORD }}
           targetPort: 80
           ingress: external
-          cpu: 8.0
-          memory: 56Gi
+          cpu: 7.0
+          memory: 48Gi
           # Environment variables for the container
           environmentVariables: |
             OPENAI_API_KEY=secretref:openai-api-key
