@@ -33,7 +33,24 @@ export const CustomerService = {
       console.error('❌ Supabase Load Error:', error);
       throw error;
     }
-    return data || [];
+
+    // DB 컬럼(_fixed 버전) -> Frontend Interface 매핑
+    const mappedData = (data || []).map((row: any) => ({
+      ...row,
+      // 1. Text -> String[] (UI는 멀티 셀렉트지만 DB는 단일 텍스트)
+      skin_type: row.skin_type_fixed || [],
+
+      // 2. Text[] -> String[] (그대로 사용)
+      skin_concerns: row.skin_concerns_fixed || [],
+
+      // 3. Text[] -> String (UI는 단일 셀렉트지만 DB는 배열)
+      preferred_tone: row.preferred_tone_fixed?.[0] || '',
+
+      // 4. Text -> String[] (UI는 멀티 셀렉트지만 DB는 단일 텍스트)
+      keywords: row.keywords_fixed || [],
+    }));
+
+    return mappedData;
   },
 
   /**
@@ -44,13 +61,19 @@ export const CustomerService = {
   async updateCustomerProfile(userId: string, profileData: any) {
     console.log(`💾 Saving profile for ${userId}...`, profileData);
 
-    // SimulationData(Store) -> DB Column 매핑
+    // SimulationData(Store) -> DB Column 매핑 (_fixed 컬럼 사용)
     const updates = {
-      skin_type: profileData.skin_type,
-      skin_concerns: profileData.skin_concerns,
-      preferred_tone: profileData.preferred_tone ?? null,
-      keywords: profileData.keywords,
-      // name 등은 변경하지 않음
+      // string[] -> text (첫 번째 값만 저장)
+      skin_type_fixed: profileData.skin_type?.[0] || null,
+      
+      // string[] -> text[]
+      skin_concerns_fixed: profileData.skin_concerns,
+
+      // string -> text[] (배열로 감싸서 저장)
+      preferred_tone_fixed: profileData.preferred_tone ? [profileData.preferred_tone] : [],
+
+      // string[] -> text (첫 번째 값만 저장)
+      keywords_fixed: profileData.keywords?.[0] || null,
     };
 
     const { data, error } = await supabase
