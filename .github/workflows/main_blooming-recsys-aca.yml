@@ -44,7 +44,7 @@ jobs:
           registryUrl: ${{ secrets.AZURE_CONTAINER_REGISTRY }}.azurecr.io
           registryUsername: ${{ secrets.ACR_USERNAME }}
           registryPassword: ${{ secrets.ACR_PASSWORD }}
-          targetPort: 8001
+          targetPort: 80
           ingress: external
           cpu: 8.0
           memory: 56Gi

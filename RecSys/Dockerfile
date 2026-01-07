@@ -12,8 +12,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Expose port (FastAPI RecSys default)
-EXPOSE 8001
+# Expose port (HTTP default)
+EXPOSE 80
 
 # Command to run the app
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]
