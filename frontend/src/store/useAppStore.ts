@@ -69,7 +69,7 @@ interface AppState {
 const INITIAL_SIMULATION_DATA: SimulationData = {
   skin_type: [],
   skin_concerns: [],
-  preferred_tone: 'Neutral',
+  preferred_tone: "Warm",
   keywords: [],
 };
 
@@ -140,7 +140,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const allowed: PersonaOptionSet = {
         skinTypes: customer.skin_type ?? [],
         concerns: customer.skin_concerns ?? [],
-        tone: customer.preferred_tone ?? [],
+        tone: Object.keys(TONE_OPTIONS),
         keywords: customer.keywords ?? [],
     };
 

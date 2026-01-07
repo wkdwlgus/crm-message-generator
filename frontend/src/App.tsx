@@ -1,7 +1,6 @@
 import { CampaignSelector } from './features/campaign/CampaignSelector';
 import PersonaGrid from './features/persona/PersonaGrid';
 import { CustomerDashboard } from './features/dashboard/CustomerDashboard';
-import { ChannelSelector } from './features/channel/ChannelSelector';
 import { StickySummary } from './features/shared/StickySummary';
 
 function App() {
@@ -47,15 +46,10 @@ function App() {
                 <h3 className="font-black text-sm uppercase mb-4 text-gray-500">
                   B. DETAILED SETTINGS & HISTORY
                 </h3>
-
-                {/* 여기가 교체된 부분입니다 */}
                 <CustomerDashboard />
               </div>
             </div>
           </section>
-
-          {/* 3. 채널 선택 */}
-          <ChannelSelector />
         </div>
 
         {/* 오른쪽: 스티키 요약 & 결과 (4칸) */}

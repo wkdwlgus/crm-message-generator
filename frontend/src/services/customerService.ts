@@ -14,7 +14,7 @@ export interface CustomerDB {
   name: string; 
   skin_type: string[];
   skin_concerns: string[];
-  preferred_tone: string[];
+  preferred_tone: string;
   keywords: string[];
   persona_category: PersonaCategory;
 }
@@ -48,7 +48,7 @@ export const CustomerService = {
     const updates = {
       skin_type: profileData.skin_type,
       skin_concerns: profileData.skin_concerns,
-      preferred_tone: profileData.preferred_tone,
+      preferred_tone: profileData.preferred_tone ?? null,
       keywords: profileData.keywords,
       // name 등은 변경하지 않음
     };

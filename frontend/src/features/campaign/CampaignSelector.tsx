@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { BRAND_LIST } from '../../data/schemaData'; 
+import { ChannelSelector } from '../channel/ChannelSelector';
 
 // 1. 작성 의도 옵션
 const INTENTIONS = [
@@ -205,6 +206,11 @@ export function CampaignSelector() {
             </div>
           )}
         </div>
+      {/* 구분선 */}
+      <hr className="border-black border-dashed mb-8 opacity-20" />
+
+      {/* D. 채널 선택 (Campaign 카드 안으로 임베드) */}
+      <ChannelSelector embedded />
       </div>
     </section>
   );
