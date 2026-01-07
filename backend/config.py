@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     SUPABASE_URL: str
     SUPABASE_KEY: str
 
-    RecSys_API_URL: str = "http://localhost:8001/recommend"
+    RecSys_API_URL: str = "https://blooming-recsys-beta.internal.thankfulsea-77291fc5.westus3.azurecontainerapps.io/recommend"
     
     # CORS
     allowed_origins: str = "*"
