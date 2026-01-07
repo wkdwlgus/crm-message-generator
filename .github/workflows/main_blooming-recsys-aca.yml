@@ -53,6 +53,7 @@ jobs:
       
       - name: Configure GPU and Scaling
         run: |
+          az extension add --name containerapp --upgrade
           az containerapp update \
             --name blooming-recsys-beta \
             --resource-group DefaultResourceGroup-USW3 \
