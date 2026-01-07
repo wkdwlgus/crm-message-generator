@@ -1,4 +1,10 @@
 import { supabase } from '../lib/supabaseClient';
+import { 
+  SKIN_TYPE_OPTIONS, 
+  SKIN_CONCERN_OPTIONS, 
+  TONE_OPTIONS, 
+  KEYWORD_OPTIONS 
+} from '../data/schemaData';
 
 interface PersonaCategory {
     id: string;
@@ -61,19 +67,32 @@ export const CustomerService = {
   async updateCustomerProfile(userId: string, profileData: any) {
     console.log(`💾 Saving profile for ${userId}...`, profileData);
 
-    // SimulationData(Store) -> DB Column 매핑 (_fixed 컬럼 사용)
+    // [한글 변환 헬퍼 함수]
+    const toKoreanList = (list: string[], map: Record<string, string>) => {
+      if (!list) return [];
+      return list.map(item => map[item] || item);
+    };
+
+    const toKoreanOne = (item: string, map: Record<string, string>) => {
+      if (!item) return null;
+      return map[item] || item;
+    };
+
+    // SimulationData(Store) -> DB Column 매핑
+    // skin_type_fixed 등은 불변(읽기 전용)이므로 수정하지 않고,
+    // 원본 컬럼(skin_type 등)에 한글로 변환하여 저장합니다.
     const updates = {
-      // string[] -> text (첫 번째 값만 저장)
-      skin_type_fixed: profileData.skin_type?.[0] || null,
-      
-      // string[] -> text[]
-      skin_concerns_fixed: profileData.skin_concerns,
+      // 1. Skin Type (DB: text[]) -> ["건성"]
+      skin_type: toKoreanList(profileData.skin_type, SKIN_TYPE_OPTIONS),
 
-      // string -> text[] (배열로 감싸서 저장)
-      preferred_tone_fixed: profileData.preferred_tone ? [profileData.preferred_tone] : [],
+      // 2. Skin Concerns (DB: text[]) -> ["트러블", "모공"]
+      skin_concerns: toKoreanList(profileData.skin_concerns, SKIN_CONCERN_OPTIONS),
 
-      // string[] -> text (첫 번째 값만 저장)
-      keywords_fixed: profileData.keywords?.[0] || null,
+      // 3. Preferred Tone (DB: text) -> "웜톤" (단일 문자열)
+      preferred_tone: toKoreanOne(profileData.preferred_tone, TONE_OPTIONS),
+
+      // 4. Keywords (DB: text[]) -> ["비건", "할인"]
+      keywords: toKoreanList(profileData.keywords, KEYWORD_OPTIONS),
     };
 
     const { data, error } = await supabase
