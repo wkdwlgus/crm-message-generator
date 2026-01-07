@@ -2,10 +2,11 @@
 Info Retrieval Node
 필요한 정보 수집 (상품 추천, 브랜드 톤앤매너)
 """
-from typing import TypedDict
-from services.mock_data import get_mock_product, recommend_product_for_customer
+from typing import TypedDict, Optional, List
 from models.user import CustomerProfile
+from models.product import Product, ProductCategory, ProductPrice, ProductReview, ProductAnalytics
 import httpx
+import json
 from config import settings
 
 
@@ -19,12 +20,86 @@ class GraphState(TypedDict):
     brand_tone: dict
     channel: str
     message: str
+    crm_reason: str = ""       # CRM 발송 이유 (예: 날씨, 할인행사, 일반홍보)
+    weather_detail: str = ""   # 날씨 상세 (crm_reason이 '날씨'일 때 사용. 예: 폭염 주의보, 장마철 습기)
+    target_brand: str = ""     # 선택된 브랜드 (없으면 빈 문자열)
     compliance_passed: bool
     retry_count: int
     error: str
     error_reason: str  # Compliance 실패 이유
     success: bool  # API 응답용
     retrieved_legal_rules: list  # 캐싱용: Compliance 노드에서 한 번 검색한 규칙 재사용
+
+
+def _convert_dict_to_product(data: dict) -> Optional[Product]:
+    """Dict 데이터를 Product 모델로 변환"""
+    try:
+        # DB에서 JSON으로 저장된 필드들이 문자열로 올 수 있으므로 파싱
+        def parse_json_field(field_value):
+            if isinstance(field_value, str):
+                try:
+                    return json.loads(field_value)
+                except:
+                    return None
+            return field_value
+
+        category = parse_json_field(data.get('category'))
+        price = parse_json_field(data.get('price'))
+        review = parse_json_field(data.get('review'))
+        analytics = parse_json_field(data.get('analytics'))
+
+        return Product(
+            product_id=str(data.get('id') or data.get('product_id')), 
+            brand=data.get('brand'),
+            name=data.get('name'),
+            description_short=data.get('description_short') or data.get('name'),
+            category=ProductCategory(**category) if category else None,
+            price=ProductPrice(**price) if price else None,
+            review=ProductReview(**review) if review else None,
+            analytics=ProductAnalytics(**analytics) if analytics else None
+        )
+    except Exception as e:
+        print(f"⚠️ Product 변환 실패: {e}")
+        return None
+
+
+def get_recommendation_from_api(user_id: str, user_data: CustomerProfile, target_brands: list = [], reason: str = "") -> Optional[Product]:
+    """
+    실제 RecSys API를 호출하여 추천 상품을 가져옵니다.
+    실패 시 None 반환.
+    """
+    try:
+        url = settings.RecSys_API_URL
+        
+        payload = {
+            "user_id": user_id,
+            "target_brand": target_brands if target_brands else [],
+            "intention": reason,
+        }
+        
+        print(f"🤖 RecSys Request: {url} (user_id={user_id})")
+        
+        # 타임아웃 제거 (RecSys 연산 시간 고려)
+        with httpx.Client(timeout=None) as client:
+            response = client.post(url, json=payload)
+            response.raise_for_status()
+            
+            result = response.json()
+            
+            if result.get("product_data"):
+                p_data = result["product_data"]
+                if not p_data.get('product_id') and result.get('product_id'):
+                    p_data['product_id'] = result['product_id']
+                
+                print(f"✅ RecSys Success: {p_data.get('name')}")
+                return _convert_dict_to_product(p_data)
+            else:
+                print("⚠️ RecSys returned no product_data")
+                return None
+                
+    except Exception as e:
+        print(f"❌ RecSys API Failed: {e}")
+        return None
 
 
 def info_retrieval_node(state: GraphState) -> GraphState:
@@ -44,95 +119,74 @@ def info_retrieval_node(state: GraphState) -> GraphState:
     user_data = state["user_data"]
     recommended_product_id = state.get("recommended_product_id") # Input으로 들어올 수도 있음
     product_data_input = state.get("product_data")
+    recommended_brand = state.get("recommended_brand", "")
+    # CRM Reason을 Intent로 사용 (키 매핑 보완)
+    intent = state.get("crm_reason", "")
     
-    # 1. RecSys API 호출 시도
-    recsys_success = False
-    try:
-        # payload 구성
-        payload = {
-            "user_id": state["user_id"],
-            "target_brand": [brand_name] if brand_name else [],
-            "intention": state.get("crm_reason") or "general",
-            "user_data": user_data.model_dump()
-        }
-        
-        print(f"📡 RecSys API 호출 시도: {settings.RecSys_API_URL}")
-        with httpx.Client() as client:
-            response = client.post(settings.RecSys_API_URL, json=payload, timeout=10.0)
-            if response.status_code == 200:
-                recsys_result = response.json()
-                if recsys_result.get("product_id") and recsys_result.get("product_id") != "UNKNOWN":
-                    p_data = recsys_result.get("product_data")
-                    if p_data:
-                        state["recommended_product_id"] = p_data["product_id"]
-                        state["product_data"] = p_data
-                        brand_name = p_data["brand"]
-                        recsys_success = True
-                        print(f"✅ RecSys 추천 성공: {p_data['name']} ({brand_name})")
-    except Exception as e:
-        print(f"⚠️ RecSys API 호출 실패: {e}. Fallback 로직을 실행합니다.")
-
-    # 2. RecSys 실패 시 기존 로직 (Supabase/Mock) 수행
-    if not recsys_success:
-        # 0. 이미 Product Data가 있는지 확인
-        if product_data_input and product_data_input.get("product_id"):
-            # 이미 데이터가 있으면 Fetch 생략
-            brand_name = product_data_input.get("brand", "Unknown")
-            # ID 동기화
-            if not recommended_product_id:
-                state["recommended_product_id"] = product_data_input.get("product_id")
-        else:
-            # 1. 상품 식별 (Input ID 우선, 없으면 추천 로직)
-            if recommended_product_id:
-                # Input으로 ID가 주어졌다면 해당 상품 조회
-                from services.supabase_client import supabase_client
-                product_data_raw = supabase_client.get_product(recommended_product_id)
-                
-                if product_data_raw:
-                    # DB에서 조회 성공 -> Mock Product 객체로 변환 (또는 Dict 직접 사용)
-                    recommended_product = convert_db_to_product_model(product_data_raw)
-                else:
-                    # DB 조회 실패 시 Mock Fallback
-                    recommended_product = get_mock_product(recommended_product_id)
-                    if not recommended_product:
-                        # Mock도 없으면 기본 추천 로직 수행
-                        recommended_product = recommend_product_for_customer(user_data)
-            else:
-                # ID가 없으면 추천 로직 수행
-                recommended_product = recommend_product_for_customer(user_data)
+    recommended_product = None
+    
+    # 0. 이미 Product Data가 있는지 확인
+    if product_data_input and product_data_input.get("product_id"):
+        # 이미 데이터가 있으면 Fetch 생략
+        brand_name = product_data_input.get("brand", "Unknown")
+        # ID 동기화
+        if not recommended_product_id:
+            state["recommended_product_id"] = product_data_input.get("product_id")
+    else:
+        # 1. 상품 식별 (RecSys API 우선, Input ID 차순)
+        if recommended_product_id:
+            # Input으로 ID가 주어졌다면 해당 상품 조회
+            from services.supabase_client import supabase_client
+            product_data_raw = supabase_client.get_product(recommended_product_id)
             
-            # 새로 조회된 경우 Brand Name 추출
-            brand_name = recommended_product.brand
-    
-        # 3. State 업데이트 (새로 조회된 경우에만)
+            recommended_product = convert_db_to_product_model(product_data_raw)
+          
+        else:
+            # ID가 없으면 RecSys API 호출
+            recommended_product = call_recsys_api(user_data, recommended_brand, intent)
+        
+        # 새로 조회된 경우 Brand Name 추출
         if recommended_product:
-            state["recommended_product_id"] = recommended_product.product_id
-            state["product_data"] = {
-                "product_id": recommended_product.product_id,
-                "brand": recommended_product.brand,
-                "name": recommended_product.name,
-                "category": {
-                    "major": recommended_product.category.major,
-                    "middle": recommended_product.category.middle,
-                    "small": recommended_product.category.small,
-                },
-                "price": {
-                    "original_price": recommended_product.price.original_price,
-                    "discounted_price": recommended_product.price.discounted_price,
-                    "discount_rate": recommended_product.price.discount_rate,
-                },
-                "review": {
-                    "score": recommended_product.review.score,
-                    "count": recommended_product.review.count,
-                    "top_keywords": recommended_product.review.top_keywords,
-                },
-                "description_short": recommended_product.description_short,
-            }
+            brand_name = recommended_product.brand
+        else:
+            # 추천 상품이 없는 경우 처리 (예: 기본 브랜드 설정 또는 에러)
+            print("⚠️ Recommended product is None. Using default or target brand.")
+            # target_brand가 있으면 그것을 사용, 없으면 Unknown
+            if isinstance(recommended_brand, list) and recommended_brand:
+                brand_name = recommended_brand[0]
+            elif isinstance(recommended_brand, str) and recommended_brand:
+                brand_name = recommended_brand
+            else:
+                brand_name = "Unknown"
     
-    # 3. 브랜드 톤앤매너 조회 (CRM Guideline JSON 연동)
+    # 2. 브랜드 톤앤매너 조회 (CRM Guideline JSON 연동)
     brand_tone_data = get_brand_tone_from_guideline(brand_name)
     
-    # 4. State 업데이트
+    # 3. State 업데이트 (새로 조회된 경우에만)
+    if recommended_product:
+        state["recommended_product_id"] = recommended_product.product_id
+        state["product_data"] = {
+            "product_id": recommended_product.product_id,
+            "brand": recommended_product.brand,
+            "name": recommended_product.name,
+            "category": {
+                "major": recommended_product.category.major,
+                "middle": recommended_product.category.middle,
+                "small": recommended_product.category.small,
+            },
+            "price": {
+                "original_price": recommended_product.price.original_price,
+                "discounted_price": recommended_product.price.discounted_price,
+                "discount_rate": recommended_product.price.discount_rate,
+            },
+            "review": {
+                "score": recommended_product.review.score,
+                "count": recommended_product.review.count,
+                "top_keywords": recommended_product.review.top_keywords,
+            },
+            "description_short": recommended_product.description_short,
+        }
+    
     if brand_tone_data:
         state["brand_tone"] = brand_tone_data
     else:
@@ -196,6 +250,118 @@ def get_brand_tone_from_guideline(brand_name_en: str) -> dict:
 
 
 def convert_db_to_product_model(db_data: dict):
+    """DB 데이터를 Product 모델 객체로 변환 (Schema Based)"""
+    from models.product import Product, ProductCategory, ProductPrice, ProductReview, ProductAnalytics
+    
+    # Keywords Parsing (Text -> List)
+    keywords_raw = db_data.get("keywords", "")
+    keywords_list = [k.strip() for k in keywords_raw.split(",")] if keywords_raw else []
+    
+    return Product(
+        product_id=str(db_data.get("id", "")),
+        brand=db_data.get("brand", "Unknown"),
+        name=db_data.get("name", "Unknown Product"),
+        category=ProductCategory(
+            major=db_data.get("category_major") or "",
+            middle=db_data.get("category_middle") or "",
+            small=db_data.get("category_small") or ""
+        ),
+        price=ProductPrice(
+            original_price=db_data.get("price_original", 0),
+            discounted_price=db_data.get("price_final", 0),
+            discount_rate=db_data.get("discount_rate", 0)
+        ),
+        review=ProductReview(
+            score=db_data.get("review_score", 0.0),
+            count=db_data.get("review_count", 0),
+            top_keywords=keywords_list
+        ),
+        description_short=db_data.get("name", ""), # Description 컬럼 부재로 name 사용
+        analytics=ProductAnalytics(
+            skin_type=db_data.get("analytics", {}).get("skin_type"),
+            age_group=db_data.get("analytics", {}).get("age_group")
+        ) if db_data.get("analytics") else None
+    )
+
+
+def call_recsys_api(user_data, target_brand: str = "", intent: str = ""):
+    """
+    RecSys API를 호출하여 상품 추천 받기
+    
+    Args:
+        user_data: CustomerProfile 객체
+        target_brand: 추천 브랜드 (빈 문자열이면 모든 브랜드)
+        intent: 추천 의도 ("": regular, "event": 할인율 높은 제품, "weather": 날씨별 제품)
+        
+    Returns:
+        Product 객체 또는 Mock fallback
+    """
+    try:
+        # RecSys API 호출
+        recsys_url = settings.RecSys_API_URL
+        
+        # target_brand가 리스트인지 확인하고 payload 구성
+        if isinstance(target_brand, list):
+            brand_payload = target_brand
+        elif isinstance(target_brand, str) and target_brand:
+            brand_payload = [target_brand]
+        else:
+            brand_payload = []
+
+        payload = {
+            "user_id": user_data.user_id,
+            # "user_data": user_data.model_dump(), 
+            "target_brand": brand_payload,
+            "intention": intent if intent else ""
+        }
+        
+        print(f"[RecSys API] Calling {recsys_url} with intent={intent}, brand={target_brand}")
+        
+        with httpx.Client(timeout=30.0) as client:
+            response = client.post(recsys_url, json=payload)
+            response.raise_for_status()
+            result = response.json()
+        
+        print(f"[RecSys API] Success: {result.get('product_name')} (ID: {result.get('product_id')})")
+        
+        # 추천 실패 시 처리 (ID가 UNKNOWN인 경우)
+        if result.get('product_id') == "UNKNOWN":
+            print("[RecSys API] Recommendation failed (UNKNOWN product). Returning None.")
+            return None
+
+        # RecSys API 응답을 Product 객체로 변환
+        product_data = result.get("product_data", {})
+        from models.product import Product, ProductCategory, ProductPrice, ProductReview
+        
+        return Product(
+            product_id=product_data.get("product_id", result.get("product_id", "UNKNOWN")),
+            brand=product_data.get("brand", "Unknown"),
+            name=product_data.get("name", result.get("product_name", "Unknown Product")),
+            category=ProductCategory(
+                major=product_data.get("category", {}).get("major", ""),
+                middle=product_data.get("category", {}).get("middle", ""),
+                small=product_data.get("category", {}).get("small", "")
+            ),
+            price=ProductPrice(
+                original_price=product_data.get("price", {}).get("original_price", 0),
+                discounted_price=product_data.get("price", {}).get("discounted_price", 0),
+                discount_rate=product_data.get("price", {}).get("discount_rate", 0)
+            ),
+            review=ProductReview(
+                score=product_data.get("review", {}).get("score", 0.0),
+                count=product_data.get("review", {}).get("count", 0),
+                top_keywords=product_data.get("review", {}).get("top_keywords", [])
+            ),
+            description_short=product_data.get("description_short", result.get("product_name", ""))
+        )
+        
+    except Exception as e:
+        print(f"[RecSys API] Error: {e}")
+        # RecSys 호출 실패시 None 반환 (Graph에서 처리)
+        return None
+
+
+def convert_db_to_product_model_old(db_data: dict):
     """DB 데이터를 Product 모델 객체로 변환 (Schema Based)"""
     from models.product import Product, ProductCategory, ProductPrice, ProductReview, ProductAnalytics
     

@@ -1,13 +1,27 @@
 @import "tailwindcss";
 
 :root {
+  /* 1. 폰트 & 기본 설정 */
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
   line-height: 1.5;
   font-weight: 400;
+  
+  /* 2. 브랜드 컬러 토큰 (DAPANDA Identity) */
+  --color-bg: #ffffff;
+  --color-text: #000000;
+  --color-primary: #FFD700;    /* 강조용 노란색 (버튼, 선택됨) */
+  --color-secondary: #E0F2FE;  /* 보조용 하늘색 (카드 배경) */
+  --color-accent: #FF6B6B;     /* 경고/삭제용 빨간색 */
+  --color-gray: #f3f4f6;       /* 비활성화 회색 */
 
-  background-color: #ffffff; 
-  color: #000000;
+  /* 3. 레트로/픽셀 UI 토큰 */
+  --border-width: 3px;
+  --border-color: #000000;
+  --shadow-hard: 4px 4px 0px 0px #000000;      /* 딱딱한 그림자 */
+  --shadow-hover: 6px 6px 0px 0px #000000;     /* 마우스 올렸을 때 그림자 */
+  --shadow-active: 0px 0px 0px 0px #000000;    /* 눌렀을 때 (그림자 사라짐) */
 
+  /* 4. 브라우저 렌더링 최적화 */
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -18,20 +32,69 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background-color: var(--color-bg);
+  color: var(--color-text);
 }
 
 #root {
   width: 100%;
   margin: 0;
-  padding:0;
+  padding: 0;
 }
 
+/* 기본 리셋 */
 button {
   cursor: pointer;
+  font-family: inherit;
 }
 
-.pixel-border {
-  border: 3px solid #000000;
-  box-shadow: 4px 4px 0px 0px rgba(0,0,0,0.1); /* 살짝 입체감 */
+/* --- 공통 유틸리티 클래스 (이름만 붙이면 레트로 스타일 적용) --- */
+
+/* 1. 기본 레트로 컨테이너 */
+.retro-box {
+  background-color: white;
+  border: var(--border-width) solid var(--border-color);
+  box-shadow: var(--shadow-hard);
+  transition: all 0.1s ease-in-out;
 }
 
+/* 2. 레트로 버튼 (누르는 효과 포함) */
+.retro-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  border: var(--border-width) solid var(--border-color);
+  box-shadow: var(--shadow-hard);
+  transition: all 0.1s;
+  background-color: white;
+}
+
+.retro-btn:hover:not(:disabled) {
+  transform: translate(-2px, -2px); /* 살짝 뜸 */
+  box-shadow: var(--shadow-hover);
+}
+
+.retro-btn:active:not(:disabled) {
+  transform: translate(2px, 2px); /* 눌림 */
+  box-shadow: var(--shadow-active);
+}
+
+.retro-btn:disabled {
+  background-color: var(--color-gray);
+  color: #9ca3af;
+  cursor: not-allowed;
+  box-shadow: none; /* 비활성화되면 그림자 제거 */
+}
+
+/* 3. 입력창 (Input) 스타일 */
+.retro-input {
+  border: var(--border-width) solid var(--border-color);
+  padding: 0.5rem;
+  font-weight: bold;
+  outline: none;
+  box-shadow: 2px 2px 0px 0px #000;
+}
+.retro-input:focus {
+  background-color: #fffbeb; /* 포커스시 살짝 노란색 */
+}

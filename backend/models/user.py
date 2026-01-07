@@ -11,6 +11,9 @@ class CustomerProfile(BaseModel):
     
     # 기본 정보
     user_id: str = Field(..., description="고유 사용자 ID")
+    name: str = Field("00", description="고객 이름")
+    age_group: str = Field("Unknown", description="20s, 30s, 40s etc")
+    membership_level: str = Field("General", description="VIP, General, New")
     
     # 멤버십 및 피부 정보
     skin_type: List[str] = Field(..., description="Dry, Oily, Combination, Sensitive")

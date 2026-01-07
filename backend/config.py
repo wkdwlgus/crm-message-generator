@@ -10,27 +10,25 @@ class Settings(BaseSettings):
     """애플리케이션 설정"""
     
     # OpenAI API
-    OPENAI_API_KEY: str
-    OPENAI_MODEL: str = "gpt-4o-mini"
+    openai_api_key: str
+    openai_model: str = "gpt-4o-mini"
     
     # Supabase Settings
     SUPABASE_URL: str
     SUPABASE_KEY: str
-
+    
     # Application Settings
     max_retry_count: int = 5
     env: str = "development"
 
-    RecSys_API_URL: str = "https://blooming-recsys-beta.thankfulsea-77291fc5.westus3.azurecontainerapps.io/recommend"
+    RecSys_API_URL: str = "http://localhost:8001/recommend"
     
     # CORS
-    allowed_origins: str = "*"
+    allowed_origins: str = "http://localhost:5173"
     
     @property
     def allowed_origins_list(self) -> List[str]:
         """CORS allowed origins를 리스트로 변환"""
-        if self.allowed_origins == "*":
-            return ["*"]
         return [origin.strip() for origin in self.allowed_origins.split(",")]
     
     class Config:

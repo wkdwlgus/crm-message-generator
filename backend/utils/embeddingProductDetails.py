@@ -145,8 +145,10 @@ def embed_texts(openai_client: OpenAI, texts: List[str], max_retries: int = 5) -
 def main():
     supabase_url = settings.SUPABASE_URL
     supabase_key = settings.SUPABASE_KEY
+    openai_key = settings.openai_api_key
+
     sb: Client = create_client(supabase_url, supabase_key)
-    oa = OpenAI(api_key=settings.OPENAI_API_KEY)
+    oa = OpenAI(api_key=openai_key)
 
     offset = 0
     total_processed = 0

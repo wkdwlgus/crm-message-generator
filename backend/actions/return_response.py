@@ -87,8 +87,8 @@ def return_response_node(state: GraphState) -> dict:
     Returns:
         API 응답 딕셔너리
     """
-    # 고객 이름 추출 (데이터 모델 변경으로 이름 필드가 없으므로 '고객' 사용)
-    customer_name = "고객"
+    # 고객 이름 추출 (이름이 없는 경우 '00' 사용)
+    customer_name = getattr(state['user_data'], 'name', '00')
     
     if not state.get("compliance_passed", False):
         # Compliance 실패 시 브랜드별 Fallback 응답

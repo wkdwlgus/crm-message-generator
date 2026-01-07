@@ -5,11 +5,10 @@
 
 export interface GeneratedMessage {
   user_id: string;
-  content: string; // 추가: 컴포넌트에서 사용하는 이름
-  message_content?: string; // 하위 호환성 유지
+  message_content: string;
   channel: string;
-  product_id?: string;
-  persona_id?: string;
+  product_id: string;
+  persona_id: string;
   generated_at?: string;
 }
 
@@ -37,4 +36,4 @@ export interface ErrorResponse {
   retry_count?: number;
 }
 
-export type ChannelType = 'APP PUSH' | 'SMS' | 'KAKAO' | 'EMAIL';
+export type ChannelType = 'APP_PUSH' | 'SMS' | 'KAKAO' | 'EMAIL';

@@ -337,8 +337,10 @@ def run_for_user(sb, oa, ce: CrossEncoder, user_id: str):
 def main():
     sb_url = settings.SUPABASE_URL
     sb_key = settings.SUPABASE_KEY
+    oa_key = settings.openai_api_key
+
     sb = create_client(sb_url, sb_key)
-    oa = OpenAI(api_key=settings.OPENAI_API_KEY)
+    oa = OpenAI(api_key=oa_key)
 
     # Cross-Encoder는 한 번만 로드해서 재사용
     ce = load_cross_encoder()

@@ -13,7 +13,7 @@ State 해결 방법:
 - compliance_check_node 내부에서 product_data를 product_info/legal_info로 변환 (로컬 변수)
 - 다른 노드와 공유하지 않는 필드는 로컬 변수로만 사용
 """
-from typing import TypedDict, List, Dict, Any, Optional
+from typing import TypedDict, List, Dict, Any
 from models.user import CustomerProfile
 from openai import OpenAI
 from supabase import create_client, Client
@@ -27,7 +27,6 @@ class GraphState(TypedDict):
     """LangGraph State 정의"""
     user_id: str
     user_data: CustomerProfile
-    persona_id: Optional[str]
     recommended_brand: List[str]
     recommended_product_id: str
     product_data: dict
@@ -64,7 +63,7 @@ except:
     supabase = None
     SUPABASE_AVAILABLE = False
 
-openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
+openai_client = OpenAI(api_key=settings.openai_api_key)
 
 # 전역 캐시
 ALL_RULE_KEYWORDS = None
@@ -498,7 +497,7 @@ def save_compliance_history(
 
 
 # ===== LangGraph 노드 함수 =====
-async def compliance_check_node(state: GraphState) -> GraphState:
+def compliance_check_node(state: GraphState) -> GraphState:
     """
     컴플라이언스 검수 노드
     

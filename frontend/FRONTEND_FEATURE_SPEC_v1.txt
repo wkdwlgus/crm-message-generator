@@ -1,0 +1,69 @@
+FRONTEND FEATURE-CENTRIC SPEC (CURRENT STATE)
+============================================
+
+1) 구조/철학
+- 디렉터리: frontend/src/features/* 로 도메인 단위 UI/로직 분리 (campaign, persona, beautyprofile, shared 등).
+- 전역 상태: zustand(store/useAppStore.ts)로 feature 간 공유. 주요 필드: selectedPersonaId, simulationData(피부/키워드), intention, isBrandTargeting, targetBrand, selectedChannel.
+- 데이터 소스: 로컬 정적 데이터 사용
+  - personaData.ts: PER
+SONA_DB 페르소나 정의
+  - schemaData.ts: 피부/관심/톤/브랜드 옵션 정의
+- App 엔트리(현 버전): CampaignSelector + PersonaGrid + BeautyProfileSelector + StickySummary로 구성. 기존 components 기반 UI는 미사용 상태.
+
+2) 각 Feature 상세
+- CampaignSelector (features/campaign/CampaignSelector.tsx)
+  - 상태: intention, isBrandTargeting, targetBrand
+  - UI: 작성 의도 선택(INTENTIONS), 브랜드 타겟팅 토글
+  - 동작: setIntention, setBrandTargeting 호출 → store 갱신
+  - 미흡: targetBrand는 UI 제공 안 함(토글만 있음); 백엔드 호출 미배선
+
+- PersonaGrid (features/persona/PersonaGrid.tsx)
+  - 데이터: PERSONA_DB(로컬)
+  - 상태: selectedPersonaId
+  - UI: 카드 그리드, hover/selected 스타일
+  - 동작: setSelectedPersonaId로 선택만 기록 (실제 persona 객체/세부정보 전달 없음)
+
+- BeautyProfileSelector (features/beautyprofile/BeautyProfileSelector.tsx)
+  - 데이터: schemaData 옵션들 + BRAND_LIST
+  - 상태: simulationData(skin_type/skin_concerns/preferred_tone/keywords), isBrandTargeting, targetBrand
+  - UI: 멀티체크박스, 셀렉트, 브랜드 타겟토글/드롭다운
+  - 동작: setSimulationData/ setBrandTargeting/ setTargetBrand로 입력 저장 (폼 수준, 서버 호출 없음)
+
+- StickySummary (features/shared/StickySummary.tsx)
+  - 의도: 진행률/선택 요약 + reset 버튼
+  - 문제: store에 없는 selectedPersona/selectedChannel 객체, resetAll 함수에 의존 → 현재 상태로는 런타임 오류 가능. store에 selector/액션 추가 필요 또는 요약 로직을 selectedPersonaId/selectedChannel로 단순화 필요.
+
+3) 전역 상태 정의 (store/useAppStore.ts)
+- selectedPersonaId 기본값 '1'
+- simulationData 초기값: 빈 배열 + preferred_tone 'Neutral'
+- intention 기본값: 'PROMOTION'
+- isBrandTargeting false, targetBrand ''
+- selectedChannel null
+- 액션: setSelectedPersonaId, setSimulationData, setIntention, setBrandTargeting, setTargetBrand, setSelectedChannel
+- 미흡: persona 객체/채널 목록/초기화(resetAll) 없음. StickySummary, 향후 메시지 전송 로직과 불일치.
+
+4) legacy components 대비 변화점
+- components/*: 메시지 생성 v1에서 사용(로컬 state + ApiService 호출 + RecSys 백엔드 연동). 현재 App에서 사용 안 함.
+- features/*: 메시지 작성 폼/선택기 중심의 v2 스켈레톤. 네트워크 호출이 제거된 상태라 UI는 동작해도 결과 생성 없음.
+- 전환 효과: UI/상태가 도메인별로 분리되고 전역 store 공유 가능하지만, 기존 기능(백엔드 호출, 결과 표시)이 사라져 흰 화면/기능 미동작 발생.
+
+5) 백엔드/RecSys 통신 현황(프론트 관점)
+- ApiService(frontend/src/services/api.ts)는 여전히 존재하지만 현 App(feat 버전)에서 호출되지 않음.
+  - GET /customers → 페르소나 목록 로딩 (v1에서 사용)
+  - GET /message?channel=... + x-user-id 헤더 → 메시지 생성 요청 (백엔드가 RecSys 호출 후 결과 반환)
+- RecSys는 백엔드 info_retrieval 노드가 내부적으로 호출(http://localhost:8001/recommend). 프론트 직접 호출 없음.
+- 현재 feature UI는 store만 갱신하고 백엔드/RecSys와 통신하지 않아 메시지 결과 화면이 없음.
+
+6) 주요 문제/리스크
+- StickySummary: store 필드 불일치로 런타임 오류 가능 (selectedPersona/selectedChannel/resetAll 미구현)
+- Channel 선택 UI 없음 → selectedChannel 항상 null
+- targetBrand UI 불완전(CampaignSelector에는 토글만, BeautyProfileSelector에는 토글+드롭다운; 일관성 필요)
+- components와 features 코드 혼재 → import 경로/명칭 혼동으로 빌드 에러 빈발
+- 백엔드 연동 단절 → 현재는 “폼만 있는 상태”
+
+7) 다음 액션 제안
+- store 정합성: selectedPersona 객체/selector, resetAll, 채널 리스트/선택 액션 정리. StickySummary 호환 수정.
+- 네트워크 연결: generate 액션(버튼) 추가 → ApiService.generateMessage 호출해 결과 표시 컴포넌트 연결.
+- 데이터 소스 선택: personaData(로컬) vs /customers(백엔드) 설정 토글 또는 일원화.
+- 채널/브랜드 토글 UI 통합: CampaignSelector vs BeautyProfileSelector 역할 분리/통합 결정.
+- legacy 정리: v1(App+components) 제거 or v2(App+features)로 완전 전환 후 경로 오류 방지.

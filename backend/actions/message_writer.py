@@ -140,21 +140,21 @@ def message_writer_node(state: GraphState) -> GraphState:
         "APP_PUSH": {
             "title_token_limit": 50,
             "body_token_limit": 100,
-            "structure": "① Title (Hook)\n② Body (Benefit + Emoji)",
+            "structure": "① 제목 (후킹 요소)\n② 본문 (혜택 + 이모지)",
             "guidelines": [
-                "Use emojis to grab attention.",
-                "Focus on immediate benefit.",
-                "Keep it very short and punchy."
+                "이모지를 사용하여 주목도를 높이세요.",
+                "즉각적인 혜택에 집중하세요.",
+                "매우 짧고 임팩트 있게 작성하세요."
             ]
         },
         "SMS": {
             "title_token_limit": 100,
             "body_token_limit": 600,
-            "structure": "① Title (Clear Topic)\n② Body (Main Message)\n③ CTA (Link)",
+            "structure": "① 제목 (명확한 주제)\n② 본문 (핵심 메시지)\n③ CTA (링크)",
             "guidelines": [
-                "No special formatting (plain text only).",
-                "Get straight to the point.",
-                "Include a clear call to action link."
+                "특별한 서식 사용 금지 (텍스트만 사용).",
+                "핵심 내용을 바로 전달하세요.",
+                "명확한 행동 유도(CTA) 링크를 포함하세요."
             ]
         },
         "EMAIL": {
@@ -162,19 +162,19 @@ def message_writer_node(state: GraphState) -> GraphState:
             "body_token_limit": 600,
             "structure": "① 공감/상황 제시 (1~2문장)\n② 개인화 포인트 (피부/날씨/이력)\n③ 제안 or 혜택\n④ CTA (링크/버튼 유도)",
             "guidelines": [
-                "Use a professional yet engaging tone.",
-                "Clearly separate sections.",
-                "Focus on the 'Why' for the customer."
+                "전문적이면서도 매력적인 톤을 사용하세요.",
+                "섹션을 명확히 구분하세요.",
+                "고객이 얻을 수 있는 '이유'에 집중하세요."
             ]
         },
         "KAKAO": {
             "title_token_limit": 100,
             "body_token_limit": 600,
-            "structure": "① Title (Eye-catching)\n② Greeting (Personalized)\n③ Key Benefit (Bulleted List)\n④ CTA",
+            "structure": "① 제목 (시선을 끄는 문구)\n② 인사말 (개인화)\n③ 핵심 혜택 (글머리 기호)\n④ CTA",
             "guidelines": [
-                "Use bullet points for readability.",
-                "Friendly and approachable tone.",
-                "Highlight key benefits clearly."
+                "가독성을 위해 글머리 기호를 사용하세요.",
+                "친근하고 접근하기 쉬운 톤을 사용하세요.",
+                "핵심 혜택을 명확하게 강조하세요."
             ]
         }
     }
@@ -195,6 +195,7 @@ def message_writer_node(state: GraphState) -> GraphState:
     system_prompt = f"""
 당신은 {brand_name}의 전문 CRM 카피라이터입니다.
 브랜드의 목소리(Sender)를 유지하되, 타겟 고객(Receiver)의 니즈를 정조준하여 설득력 있는 메시지를 작성하세요.
+**반드시 한국어(Korean)로 작성하세요.**
 
 {sender_context}
 {receiver_context}

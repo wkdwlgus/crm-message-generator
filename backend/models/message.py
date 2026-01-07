@@ -29,8 +29,22 @@ class GeneratedMessage(BaseModel):
     generated_at: datetime = Field(default_factory=datetime.now)
 
 
+class MessageRequest(BaseModel):
+    """API 요청 모델 - POST /message"""
+    userId: str
+    channel: str = Field(..., description="SMS | APPPUSH | KAKAO | EMAIL")
+    intention: Optional[str] = Field(None, description="CRM 발송 이유 (날씨, 할인행사 등)")
+    hasBrand: Optional[bool] = False
+    targetBrand: Optional[str] = None
+    season: Optional[str] = None
+    weatherDetail: Optional[str] = None
+    beautyProfile: Optional[dict] = None
+    userPrompt: Optional[str] = None
+    persona: Optional[str] = None
+
+
 class MessageResponse(BaseModel):
-    """API 응답 모델 - GET /message"""
+    """API 응답 모델 - GET/POST /message"""
     message: str = Field(..., description="생성된 CRM 메시지 텍스트")
     user: str = Field(..., description="요청한 고객 ID")
     method: str = Field(..., description="email | sms | app_push | kakaotalk")

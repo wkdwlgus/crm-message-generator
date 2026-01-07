@@ -1,85 +1,76 @@
-/**
- * API Service
- * 백엔드 API 호출 서비스 (실제 DB 연동 버전)
- */
 import type { ChannelType, CustomerPersona } from '../types/api';
+import axios from 'axios';
 
+// FastAPI 서버 주소
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
+interface GenerateRequestParams {
+  userId: string;
+  channel: ChannelType;
+  intention?: string | null;
+  hasBrand?: boolean;
+  targetBrand?: string | null;
+  season?: string | null;         
+  weatherDetail?: string | null;  
+  beautyProfile?: Record<string, any>;
+  userPrompt?: string;
+  persona?: string;
+}
 
 export class ApiService {
   /**
-   * 1. 개인화 메시지 생성 API 호출
-   * @param userId - 고객 ID (헤더로 전달)
-   * @param channel - 메시지 채널 
-   * @returns 생성된 메시지 응답
+   * 메시지 생성
+   * - fetch → axios.post 로 변경
+   * - 모든 데이터는 body에 JSON으로 전달
    */
-  static async generateMessage(
-    userId: string,
-    channel: ChannelType = 'SMS'
-  ): Promise<{ data: any }> { 
-    
-    // 백엔드: GET /message (Query: channel, Header: x-user-id)
-    const response = await fetch(
-      `${API_BASE_URL}/message?channel=${channel}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId,
-        },
-      }
-    );
+  static async generateMessage(params: GenerateRequestParams
+  ): Promise<{ data: any }> {
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.detail || '메시지 생성에 실패했습니다.');
-    }
+    try {
+      const response = await axios.post(`${API_BASE_URL}/message`, {
+        userId: params.userId,
+        channel: params.channel,
+        intention: params.intention,
+        hasBrand: params.hasBrand,
+        targetBrand: params.targetBrand,
+        season: params.season,
+        weatherDetail: params.weatherDetail,
+        beautyProfile: params.beautyProfile,
+        userPrompt: params.userPrompt,
+        persona: params.persona,
+      });
 
-    const result = await response.json();
+      return response.data;
+} catch (error: any) {
+  console.error("API Call Failed:", error);
 
-    // Backend(Python): { message: "...", user: "...", method: "..." }
-    // Frontend(React): { content: "...", user_id: "...", channel: "..." }
-    return {
-      data: {
-        content: result.message,       // 내용 매핑
-        channel: result.method as ChannelType, // 채널 매핑
-        user_id: result.user,          // 유저 ID 매핑
-        generated_at: new Date().toISOString(),
-      }
-    };
+  // ✅ 추가: 서버가 준 응답(422 detail) 찍기
+  console.log("status:", error?.response?.status);
+  console.log("response data:", error?.response?.data);
+  console.log("response detail:", error?.response?.data?.detail);
+
+  // ✅ 추가: 내가 실제로 서버에 보낸 body 확인
+  console.log("sent params:", params);
+
+  throw error;
+  }
   }
 
   /**
-   * 2. 고객 목록 조회 API 호출 
-   * * @returns Supabase에서 가져온 고객 리스트
+   * 고객 목록 (아직 Mock)
+   * → 추후 Supabase로 교체
    */
   static async getCustomers(): Promise<CustomerPersona[]> {
-    try {
-      // 백엔드: GET /customer
-      const response = await fetch(`${API_BASE_URL}/customers`);
-      
-      if (!response.ok) {
-        throw new Error('고객 목록을 불러오지 못했습니다.');
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error("API Error (getCustomers):", error);
-      return []; // 에러 발생 시 빈 배열 반환 (화면 깨짐 방지)
-    }
+    return [];
   }
+}
 
-  /**
-   * 3. Health Check API 호출
-   * * @returns 서버 상태
-   */
-  static async healthCheck(): Promise<{ status: string; service: string; version: string }> {
-    const response = await fetch(`${API_BASE_URL}/`);
-    
-    if (!response.ok) {
-      throw new Error('서버에 연결할 수 없습니다.');
-    }
-
-    return response.json();
-  }
+// Mock 함수 (백업용)
+function mockGenerate(params: any) {
+  return Promise.resolve({
+    data: {
+      message: 'This is a mock response',
+      params,
+    },
+  });
 }
