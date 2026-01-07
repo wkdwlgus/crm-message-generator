@@ -44,6 +44,8 @@ jobs:
           registryUrl: ${{ secrets.AZURE_CONTAINER_REGISTRY }}.azurecr.io
           registryUsername: ${{ secrets.ACR_USERNAME }}
           registryPassword: ${{ secrets.ACR_PASSWORD }}
+          targetPort: 8001
+          ingress: external
           # Environment variables for the container
           environmentVariables: |
             OPENAI_API_KEY=secretref:openai-api-key
