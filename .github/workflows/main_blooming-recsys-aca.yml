@@ -1,3 +1,4 @@
+# Final deployment trigger with updated IAM permissions
 name: Build and deploy RecSys to Azure Container Apps (GPU)
 
 on:
