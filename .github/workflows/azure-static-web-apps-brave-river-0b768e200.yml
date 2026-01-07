@@ -52,6 +52,8 @@ jobs:
           ###### End of Repository/Build Configurations ######
         env: # 추가: 빌드 시 환경 변수 주입
           VITE_API_BASE_URL: https://blooming-beta-bcffefbqevh8fmgn.koreasouth-01.azurewebsites.net
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'

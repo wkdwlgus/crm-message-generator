@@ -5,6 +5,7 @@
 
 export interface GeneratedMessage {
   user_id: string;
+  content?: string;
   message_content: string;
   channel: string;
   product_id: string;
