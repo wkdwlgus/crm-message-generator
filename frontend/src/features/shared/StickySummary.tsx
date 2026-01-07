@@ -9,6 +9,7 @@ export function StickySummary() {
   const {
     intention,
     selectedPersonaId,
+    selectedCustomer,
     simulationData,
     isBrandTargeting,
     targetBrand,
@@ -76,9 +77,8 @@ export function StickySummary() {
     if (!selectedChannel) return;
     if (isGenerating) return;
 
-    // 선택된 페르소나 ID만 가져옴 (없으면 기본값 "2")
-    const targetUserId = selectedPersona?.id || '2';
-
+    // 선택된 고객의 user_id 사용 (없으면 기본값 "user_0001")
+    const targetUserId = selectedCustomer?.user_id || 'user_0001';
     setIsGenerating(true);
     setGeneratedResult(null);
 

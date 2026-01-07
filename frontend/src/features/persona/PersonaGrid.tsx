@@ -54,7 +54,9 @@ const PersonaGrid = () => {
             key={customer.user_id}
             type="button"
             // ✅ 클릭 시 전체 고객 객체를 Store에 저장 (수정 모드 진입)
-            onClick={() => setSelectedCustomer(isSelected ? null : customer)} 
+            onClick={() => {
+              setSelectedCustomer(isSelected ? null : customer);
+            }} 
             onMouseEnter={() => setHoveredId(customer.user_id)}
             onMouseLeave={() => setHoveredId(null)}
             className={`
