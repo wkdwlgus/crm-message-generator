@@ -42,22 +42,25 @@ jobs:
           resourceGroup: 'DefaultResourceGroup-USW3'
           imageToDeploy: ${{ secrets.AZURE_CONTAINER_REGISTRY }}.azurecr.io/blooming-recsys:${{ github.sha }}
           registryUrl: ${{ secrets.AZURE_CONTAINER_REGISTRY }}.azurecr.io
-          registryUsername: ${{ secrets.ACR_USERNAME }}
-          registryPassword: ${{ secrets.ACR_PASSWORD }}
           targetPort: 80
           ingress: external
-          cpu: 7.0
-          memory: 48Gi
-          # Environment variables for the container
+          # GPU T4 requires exactly 4 vCPU and 8Gi/16Gi memory in Consumption profile
+          cpu: 4.0
+          memory: 16Gi
           environmentVariables: |
             OPENAI_API_KEY=secretref:openai-api-key
             SUPABASE_URL=secretref:supabase-url
             SUPABASE_KEY=secretref:supabase-key
       
-      - name: Force update ingress port to 80
+      - name: Configure GPU and Scaling
         run: |
-          az containerapp ingress update \
+          az containerapp update \
             --name blooming-recsys-beta \
             --resource-group DefaultResourceGroup-USW3 \
-            --target-port 80 \
-            --type external
+            --min-replicas 1 \
+            --max-replicas 1 \
+            --cpu 4.0 \
+            --memory 16Gi \
+            --set-env-vars OPENAI_API_KEY=secretref:openai-api-key SUPABASE_URL=secretref:supabase-url SUPABASE_KEY=secretref:supabase-key \
+            --gpu 1 \
+            --gpu-type T4

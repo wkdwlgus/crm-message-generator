@@ -76,6 +76,22 @@ async def root():
         "endpoint": "/recommend (POST only)"
     }
 
+@app.get("/health/gpu")
+async def health_gpu():
+    """Check if GPU is available and return device information"""
+    import torch
+    gpu_available = torch.cuda.is_available()
+    gpu_count = torch.cuda.device_count() if gpu_available else 0
+    gpu_name = torch.cuda.get_device_name(0) if gpu_available else "N/A"
+    
+    return {
+        "gpu_available": gpu_available,
+        "gpu_count": gpu_count,
+        "gpu_name": gpu_name,
+        "torch_version": torch.__version__,
+        "cuda_version": torch.version.cuda if gpu_available else "N/A"
+    }
+
 @app.post("/recommend", response_model=RecommendationResponse)
 async def recommend(request: RecommendationRequest):
     """
