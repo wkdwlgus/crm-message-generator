@@ -3,36 +3,25 @@
 Supabase Client Service
 Supabase REST API와의 통신을 담당
 """
-import httpx
+from supabase import create_client, Client
 from config import settings
 from typing import Optional, Dict, Any, List
+from datetime import datetime, timedelta
 
 class SupabaseClient:
     def __init__(self):
-        self.base_url = settings.SUPABASE_URL.rstrip("/")
-        self.headers = {
-            "apikey": settings.SUPABASE_KEY,
-            "Authorization": f"Bearer {settings.SUPABASE_KEY}",
-            "Content-Type": "application/json",
-            "Prefer": "return=representation"
-        }
+        self.client: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
     def get_user(self, user_id: str) -> Optional[Dict[str, Any]]:
         """
         Fetch user profile from Supabase
-        Table: customers (Assume table name)
+        Table: customers
         """
         try:
-            url = f"{self.base_url}/rest/v1/customers" # Table Name Assumption
-            params = {
-                "user_id": f"eq.{user_id}",
-                "select": "*"
-            }
-            with httpx.Client() as client:
-                response = client.get(url, headers=self.headers, params=params)
-                response.raise_for_status()
-                data = response.json()
-                return data[0] if data else None
+            response = self.client.table("customers").select("*").eq("user_id", user_id).execute()
+            if response.data:
+                return response.data[0]
+            return None
         except Exception as e:
             print(f"Error fetching user from Supabase: {e}")
             return None
@@ -40,22 +29,55 @@ class SupabaseClient:
     def get_product(self, product_id: str) -> Optional[Dict[str, Any]]:
         """
         Fetch product details from Supabase
-        Table: products (Assume table name)
+        Table: products
         """
         try:
-            url = f"{self.base_url}/rest/v1/products" # Table Name Assumption
-            params = {
-                "id": f"eq.{product_id}",
-                "select": "*"
-            }
-            with httpx.Client() as client:
-                response = client.get(url, headers=self.headers, params=params)
-                response.raise_for_status()
-                data = response.json()
-                return data[0] if data else None
+            response = self.client.table("products").select("*").eq("id", product_id).execute()
+            if response.data:
+                return response.data[0]
+            return None
         except Exception as e:
             print(f"Error fetching product from Supabase: {e}")
             return None
+
+    def save_generated_message(self, message_data: Dict[str, Any]) -> bool:
+        """
+        Save generated message to 'generated_messages' table
+        """
+        try:
+            response = self.client.table("generated_messages").insert(message_data).execute()
+            if response.data:
+                print("✅ Message saved to Supabase")
+                return True
+            else:
+                print("❌ Failed to save message: No data returned")
+                return False
+        except Exception as e:
+            print(f"Error saving message to Supabase: {e}")
+            return False
+
+    def get_recent_messages(self, user_id: str, product_id: str = None, days: int = 1) -> List[Dict[str, Any]]:
+        """
+        Check for recent messages for the same user (and optionally same product)
+        """
+        try:
+            cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+            
+            query = self.client.table("generated_messages") \
+                .select("*") \
+                .eq("user_id", user_id) \
+                .gt("generated_at", cutoff) \
+                .order("generated_at", desc=True) \
+                .limit(5)
+
+            if product_id:
+                query = query.eq("product_id", product_id)
+            
+            response = query.execute()
+            return response.data
+        except Exception as e:
+            print(f"Error checking recent messages: {e}")
+            return []
 
 # Global instance
 supabase_client = SupabaseClient()

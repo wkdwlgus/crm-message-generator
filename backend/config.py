@@ -16,15 +16,12 @@ class Settings(BaseSettings):
     # Supabase Settings
     SUPABASE_URL: str
     SUPABASE_KEY: str
-    
+
     # Application Settings
     max_retry_count: int = 5
     env: str = "development"
 
-    SUPABASE_URL: str
-    SUPABASE_KEY: str
-
-    RecSys_API_URL: str = "https://blooming-recsys-beta.internal.thankfulsea-77291fc5.westus3.azurecontainerapps.io/recommend"
+    RecSys_API_URL: str = "https://blooming-recsys-beta.thankfulsea-77291fc5.westus3.azurecontainerapps.io/recommend"
     
     # CORS
     allowed_origins: str = "*"

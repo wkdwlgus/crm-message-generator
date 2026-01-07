@@ -14,6 +14,8 @@ class GraphState(TypedDict):
     """LangGraph State 정의"""
     user_id: str
     user_data: CustomerProfile
+    target_brand: str
+    target_persona: str
     recommended_product_id: str
     product_data: dict
     brand_tone: dict
@@ -85,18 +87,22 @@ def return_response_node(state: GraphState) -> dict:
     Returns:
         API 응답 딕셔너리
     """
+    # 고객 이름 추출 (데이터 모델 변경으로 이름 필드가 없으므로 '고객' 사용)
+    customer_name = "고객"
+    
     if not state.get("compliance_passed", False):
         # Compliance 실패 시 브랜드별 Fallback 응답
         print(f"❌ Compliance 실패: 브랜드별 Fallback Response 생성")
         
-        # 고객 이름 추출
-        customer_name = state['user_data'].name
-        
-        # 브랜드 이름 추출 (brand_tone에서)
-        brand_name = state['brand_tone']
+        # 브랜드 이름 추출
+        brand_name = state.get('target_brand')
+        if not brand_name and isinstance(state.get('brand_tone'), dict):
+            brand_name = state['brand_tone'].get('name', 'DefaultBrand')
+        if not brand_name:
+            brand_name = 'DefaultBrand'
         
         # 채널 정보
-        channel = state['channel']
+        channel = state.get('channel', 'SMS')
         
         # 브랜드별 Fallback 메시지 생성
         fallback_message = _get_brand_fallback_message(brand_name, channel, customer_name)
@@ -106,22 +112,23 @@ def return_response_node(state: GraphState) -> dict:
         
         return {
             "success": True,
-            "message": fallback_message
+            "message": fallback_message,
+            "user_id": state["user_id"],
+            "channel": channel
         }
     
     # 성공 응답 생성
-    strategy_input = state["strategy"]
-    persona_id = "default_persona"
-    if isinstance(strategy_input, dict):
-        persona_id = strategy_input.get("persona_id", "default_persona")
+    persona_used = state.get("target_persona", "default_persona")
+    brand_name = state.get("target_brand")
     
     generated_message = GeneratedMessage(
         user_id=state["user_id"],
         message_text=state["message"],
         channel=state.get("channel", "SMS"),
-        product_id=state["recommended_product_id"],
-        persona_id=persona_id,
-        compliance_passed=state.get("compliance_passed", True),  # 🚨 추가 필수
+        product_id=state.get("recommended_product_id"),
+        brand_name=brand_name,
+        persona_used=persona_used,
+        compliance_passed=state.get("compliance_passed", True),
         retry_count=state.get("retry_count", 0),
     )
     
@@ -133,4 +140,7 @@ def return_response_node(state: GraphState) -> dict:
 
     print(f"✅ 최종 응답 생성 response: {response}")
     
-    return response.model_dump()
+    # API가 success: True를 확인할 수 있도록 추가
+    result = response.model_dump()
+    result["success"] = True
+    return result

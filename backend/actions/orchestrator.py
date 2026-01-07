@@ -22,14 +22,13 @@ class GraphState(TypedDict):
     weather_detail: str = ""   # 날씨 상세 (crm_reason이 '날씨'일 때 사용. 예: 폭염 주의보, 장마철 습기)
     target_brand: str = ""     # 선택된 브랜드 (없으면 빈 문자열)
     target_persona: str = ""   # 선택된 페르소나 (예: Persona_1)
+    use_crm_cache: bool = True # [NEW] CRM 메시지 재사용 여부 (Default: True)
     recommended_brand: str  # 추천 브랜드 
     recommended_product_id: str
     product_data: dict
     brand_tone: dict
     channel: str
     message: str
-    weather: str  # [NEW] 날씨 정보
-    intent: str   # [NEW] 고객 의도 (구매/탐색/정보 등)
     compliance_passed: bool
     retry_count: int
     error: str
@@ -76,20 +75,9 @@ def orchestrator_node(state: GraphState) -> GraphState:
     else:
         recommended_brand = [target_brand]
     
-    # [NEW] 3. Mock Weather & Intent (추후 실제 데이터 연동 필요)
-    import random
-    mock_intent = random.choice(["regular", "events", "weather"])
-    
-    # Weather is only relevant if intent is 'weather'
-    mock_weather = None
-    if mock_intent == "weather":
-        mock_weather = random.choice(["Sunny", "Cloudy", "Rainy", "Dry"])
-    
     # State 업데이트
     state["recommended_brand"] = recommended_brand
     state["retry_count"] = 0
-    state["weather"] = mock_weather
-    state["intent"] = mock_intent
     
     print(f"🎯 Orchestrator 결과:")
     print(f"  - Recommended Brand: {recommended_brand}")
