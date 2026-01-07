@@ -42,11 +42,10 @@ jobs:
           resourceGroup: 'DefaultResourceGroup-USW3'
           imageToDeploy: ${{ secrets.AZURE_CONTAINER_REGISTRY }}.azurecr.io/blooming-recsys:${{ github.sha }}
           registryUrl: ${{ secrets.AZURE_CONTAINER_REGISTRY }}.azurecr.io
+          registryUsername: ${{ secrets.ACR_USERNAME }}
+          registryPassword: ${{ secrets.ACR_PASSWORD }}
           targetPort: 80
           ingress: external
-          # GPU T4 requires exactly 4 vCPU and 8Gi/16Gi memory in Consumption profile
-          cpu: 4.0
-          memory: 16Gi
           environmentVariables: |
             OPENAI_API_KEY=secretref:openai-api-key
             SUPABASE_URL=secretref:supabase-url
