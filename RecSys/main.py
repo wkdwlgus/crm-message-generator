@@ -16,11 +16,13 @@ logger = logging.getLogger(__name__)
 
 logger.info("Initializing FastAPI app...")
 get_recommendation = None # Placeholder
+import_error = None
 
 try:
     from recommendation_model_API import get_recommendation
     logger.info("Imported recommendation_model_API successfully")
 except Exception as e:
+    import_error = str(e)
     logger.error(f"Error importing recommendation_model_API: {e}")
 
 app = FastAPI(
@@ -49,9 +51,10 @@ async def favicon():
 @app.get("/")
 async def root():
     return {
-        "status": "healthy", 
+        "status": "healthy" if import_error is None else "error", 
         "service": "Blooming Recommendation System (GPU)",
-        "endpoint": "/recommend (POST only)"
+        "endpoint": "/recommend (POST only)",
+        "import_error": import_error
     }
 
 @app.post("/recommend", response_model=RecommendationResponse)
@@ -60,6 +63,8 @@ async def recommend(request: RecommendationRequest):
     Recommend a product based on user profile and history using LLM.
     """
     try:
+        if get_recommendation is None:
+            raise Exception(f"recommendation_model_API was not imported correctly. Error: {import_error}")
         result = await get_recommendation(request)
         return result
     except Exception as e:
