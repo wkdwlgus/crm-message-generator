@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     openai_api_key: str
     openai_model: str = "gpt-4o-mini"
     
+    # Supabase Settings
+    SUPABASE_URL: str
+    SUPABASE_KEY: str
+    
     # Application Settings
     max_retry_count: int = 5
     env: str = "development"

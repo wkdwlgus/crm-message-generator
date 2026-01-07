@@ -18,8 +18,8 @@ app = FastAPI(
 
 class RecommendationRequest(BaseModel):
     user_id: str
-    case: int # 1: No data, 2: History only, 3: Profile only, 4: Both
-    target_brand: Optional[List[str]] = None # Brands to filter recommendations by
+    target_brand: Optional[List[str]] = [] # Target brand list
+    intention: Optional[str] = None # Recommendation intention (ex: "weather", "new_product", "general")
     user_data: Optional[CustomerProfile] = None
 
 class RecommendationResponse(BaseModel):

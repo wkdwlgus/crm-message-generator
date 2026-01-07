@@ -28,7 +28,6 @@ class GraphState(TypedDict):
     user_id: str
     user_data: CustomerProfile
     recommended_brand: List[str]
-    strategy: int
     recommended_product_id: str
     product_data: dict
     brand_tone: dict
@@ -49,6 +48,7 @@ class GraphState(TypedDict):
     crm_reason: str
     weather_detail: str
     target_persona: str
+
 
 # Supabase 클라이언트 (선택적 - Rule DB가 없으면 Mock 사용)
 try:

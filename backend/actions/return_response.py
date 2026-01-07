@@ -14,7 +14,6 @@ class GraphState(TypedDict):
     """LangGraph State 정의"""
     user_id: str
     user_data: CustomerProfile
-    strategy: dict
     recommended_product_id: str
     product_data: dict
     brand_tone: dict
@@ -111,8 +110,27 @@ def return_response_node(state: GraphState) -> dict:
         }
     
     # 성공 응답 생성
-    print(f"✅ 최종 응답 생성: user={state['user_id']}, message={state['message'][:50]}...")
-    print(f"최종 state 상태, {state}")
-    return {
-        "success": True,
-    }
+    strategy_input = state["strategy"]
+    persona_id = "default_persona"
+    if isinstance(strategy_input, dict):
+        persona_id = strategy_input.get("persona_id", "default_persona")
+    
+    generated_message = GeneratedMessage(
+        user_id=state["user_id"],
+        message_text=state["message"],
+        channel=state.get("channel", "SMS"),
+        product_id=state["recommended_product_id"],
+        persona_id=persona_id,
+        compliance_passed=state.get("compliance_passed", True),  # 🚨 추가 필수
+        retry_count=state.get("retry_count", 0),
+    )
+    
+    response = MessageResponse(
+        message=generated_message.message_text,
+        user=generated_message.user_id,
+        method=generated_message.channel,
+    )
+
+    print(f"✅ 최종 응답 생성 response: {response}")
+    
+    return response.model_dump()
