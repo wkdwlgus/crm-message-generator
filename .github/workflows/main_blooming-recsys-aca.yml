@@ -57,7 +57,7 @@ jobs:
           # Add GPU workload profile to the environment if it doesn't exist
           # Profile type 'Consumption-GPU-NC8as-T4' is standard for T4 GPUs
           az containerapp env workload-profile add \
-            --name blooming-recsys-beta-env \
+            --name managedEnvironment-DefaultResource-8bfb \
             --resource-group DefaultResourceGroup-USW3 \
             --workload-profile-name gpu-profile \
             --workload-profile-type Consumption-GPU-NC8as-T4 \
