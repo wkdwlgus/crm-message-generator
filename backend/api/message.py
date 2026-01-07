@@ -136,7 +136,11 @@ async def generate_message(
         
         # 3. 결과 검증
         if result.get("success", False):
-            # [Added] Save to Supabase (비동기 처리 권장되나 여기선 동기 처리)
+            # [Removed] Save to Supabase (Double Entry Prevention)
+            # Graph 내의 'save_crm' 노드가 Template을 저장하므로, 여기서 저장하면 중복(Template + Personalized)이 발생함.
+            # Analytics를 위해 Personalized Message 저장이 필요하다면 별도 테이블(generated_logs 등)을 사용해야 함.
+            # user request에 따라 Placeholder(Template)만 남기기 위해 이곳의 저장은 비활성화.
+            """
             try:
                 save_data = {
                     "user_id": result["user_id"],
@@ -151,6 +155,7 @@ async def generate_message(
                 supabase_client.save_generated_message(save_data)
             except Exception as e:
                 print(f"⚠️ Failed to save generated message: {e}")
+            """
 
             # MessageResponse 모델로 변환하여 반환
             return MessageResponse(
