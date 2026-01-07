@@ -64,7 +64,13 @@ export const CustomerService = {
       throw error;
     }
     
-    console.log("✅ Profile Updated in DB:", data);
+    if (!data || data.length === 0) {
+      console.error(`⚠️ [Update Failed] DB에서 ID가 '${userId}'인 고객을 찾을 수 없습니다. (업데이트된 행: 0개)`);
+      alert(`DB 업데이트 실패: ID '${userId}'가 존재하지 않습니다.`);
+    } else {
+      console.log(`✅ [Update Success] ID '${userId}' 정보 업데이트 완료:`, data);
+    }
+    
     return data;
   }
 };

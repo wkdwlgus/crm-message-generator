@@ -16,6 +16,8 @@ export function StickySummary() {
     personas,
     resetAll,
 
+    selectedCustomer, // ✅ 추가: 실제 고객 정보 (user_id 포함) 가져오기
+
     isGenerating,
     setIsGenerating,
     generatedResult,
@@ -76,8 +78,9 @@ export function StickySummary() {
     if (!selectedChannel) return;
     if (isGenerating) return;
 
-    // 선택된 페르소나 ID만 가져옴 (없으면 기본값 "2")
-    const targetUserId = selectedPersona?.id || '2';
+    // ✅ 수정: 페르소나 ID("P1")가 아니라 실제 DB PK인 user_id("user_0001")를 사용해야 함
+    // 만약 고객 선택이 안되어 있다면 기존 로직(fallback) 유지
+    const targetUserId = selectedCustomer?.user_id || selectedPersona?.id || '2';
 
     setIsGenerating(true);
     setGeneratedResult(null);
