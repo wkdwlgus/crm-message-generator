@@ -50,9 +50,8 @@ async def favicon():
 async def root():
     return {
         "status": "healthy", 
-        "service": "Recommendation System",
-        "gpu_available": torch.cuda.is_available(),
-        "device_count": torch.cuda.device_count() if torch.cuda.is_available() else 0
+        "service": "Blooming Recommendation System (GPU)",
+        "endpoint": "/recommend (POST only)"
     }
 
 @app.post("/recommend", response_model=RecommendationResponse)
