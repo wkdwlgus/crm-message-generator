@@ -147,7 +147,8 @@ def generate_mock_recent_brands(personatype: int) -> List[str]:
     """
     try:
         # 현재 파일(orchestrator.py)과 같은 디렉토리에 있는 persona_db_v2.json 참조
-        current_dir = Path(r"c:\Users\helen\Desktop\kt cloud tech up\advanced_project\blooming-v1\backend\actions")        
+        current_dir = Path(__file__).parent
+
         json_path = current_dir / "persona_db.json"
         
         if not json_path.exists():
@@ -215,7 +216,8 @@ def determine_recommended_brand(personatype: int, recent_brands: List[str]) -> L
     """
     try:
         # 현재 파일(orchestrator.py)과 같은 디렉토리에 있는 persona_db_v2.json 참조
-        current_dir = Path(r"c:\Users\helen\Desktop\kt cloud tech up\advanced_project\blooming-v1\backend\actions")        
+        current_dir = Path(__file__).parent
+
         json_path = current_dir / "persona_db.json"
         
         if not json_path.exists():

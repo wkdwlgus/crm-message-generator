@@ -45,67 +45,94 @@ def info_retrieval_node(state: GraphState) -> GraphState:
     recommended_product_id = state.get("recommended_product_id") # Input으로 들어올 수도 있음
     product_data_input = state.get("product_data")
     
-    recommended_product = None
-    
-    # 0. 이미 Product Data가 있는지 확인
-    if product_data_input and product_data_input.get("product_id"):
-        # 이미 데이터가 있으면 Fetch 생략
-        brand_name = product_data_input.get("brand", "Unknown")
-        # ID 동기화
-        if not recommended_product_id:
-            state["recommended_product_id"] = product_data_input.get("product_id")
-    else:
-        # 1. 상품 식별 (Input ID 우선, 없으면 추천 로직)
-        if recommended_product_id:
-            # Input으로 ID가 주어졌다면 해당 상품 조회
-            from services.supabase_client import supabase_client
-            product_data_raw = supabase_client.get_product(recommended_product_id)
-            
-            if product_data_raw:
-                # DB에서 조회 성공 -> Mock Product 객체로 변환 (또는 Dict 직접 사용)
-                # 여기서는 편의상 Mock 구조를 따르도록 Dict 변환
-                recommended_product = convert_db_to_product_model(product_data_raw)
-            else:
-                # DB 조회 실패 시 Mock Fallback
-                recommended_product = get_mock_product(recommended_product_id)
-                if not recommended_product:
-                    # Mock도 없으면 기본 추천 로직 수행
-                    recommended_product = recommend_product_for_customer(user_data)
-        else:
-            # ID가 없으면 추천 로직 수행
-            recommended_product = recommend_product_for_customer(user_data)
+    # 1. RecSys API 호출 시도
+    recsys_success = False
+    try:
+        # payload 구성
+        payload = {
+            "user_id": state["user_id"],
+            "target_brand": [brand_name] if brand_name else [],
+            "intention": state.get("crm_reason") or "general",
+            "user_data": user_data.model_dump()
+        }
         
-        # 새로 조회된 경우 Brand Name 추출
-        brand_name = recommended_product.brand
+        print(f"📡 RecSys API 호출 시도: {settings.RecSys_API_URL}")
+        with httpx.Client() as client:
+            response = client.post(settings.RecSys_API_URL, json=payload, timeout=10.0)
+            if response.status_code == 200:
+                recsys_result = response.json()
+                if recsys_result.get("product_id") and recsys_result.get("product_id") != "UNKNOWN":
+                    p_data = recsys_result.get("product_data")
+                    if p_data:
+                        state["recommended_product_id"] = p_data["product_id"]
+                        state["product_data"] = p_data
+                        brand_name = p_data["brand"]
+                        recsys_success = True
+                        print(f"✅ RecSys 추천 성공: {p_data['name']} ({brand_name})")
+    except Exception as e:
+        print(f"⚠️ RecSys API 호출 실패: {e}. Fallback 로직을 실행합니다.")
+
+    # 2. RecSys 실패 시 기존 로직 (Supabase/Mock) 수행
+    if not recsys_success:
+        # 0. 이미 Product Data가 있는지 확인
+        if product_data_input and product_data_input.get("product_id"):
+            # 이미 데이터가 있으면 Fetch 생략
+            brand_name = product_data_input.get("brand", "Unknown")
+            # ID 동기화
+            if not recommended_product_id:
+                state["recommended_product_id"] = product_data_input.get("product_id")
+        else:
+            # 1. 상품 식별 (Input ID 우선, 없으면 추천 로직)
+            if recommended_product_id:
+                # Input으로 ID가 주어졌다면 해당 상품 조회
+                from services.supabase_client import supabase_client
+                product_data_raw = supabase_client.get_product(recommended_product_id)
+                
+                if product_data_raw:
+                    # DB에서 조회 성공 -> Mock Product 객체로 변환 (또는 Dict 직접 사용)
+                    recommended_product = convert_db_to_product_model(product_data_raw)
+                else:
+                    # DB 조회 실패 시 Mock Fallback
+                    recommended_product = get_mock_product(recommended_product_id)
+                    if not recommended_product:
+                        # Mock도 없으면 기본 추천 로직 수행
+                        recommended_product = recommend_product_for_customer(user_data)
+            else:
+                # ID가 없으면 추천 로직 수행
+                recommended_product = recommend_product_for_customer(user_data)
+            
+            # 새로 조회된 경우 Brand Name 추출
+            brand_name = recommended_product.brand
     
-    # 2. 브랜드 톤앤매너 조회 (CRM Guideline JSON 연동)
+        # 3. State 업데이트 (새로 조회된 경우에만)
+        if recommended_product:
+            state["recommended_product_id"] = recommended_product.product_id
+            state["product_data"] = {
+                "product_id": recommended_product.product_id,
+                "brand": recommended_product.brand,
+                "name": recommended_product.name,
+                "category": {
+                    "major": recommended_product.category.major,
+                    "middle": recommended_product.category.middle,
+                    "small": recommended_product.category.small,
+                },
+                "price": {
+                    "original_price": recommended_product.price.original_price,
+                    "discounted_price": recommended_product.price.discounted_price,
+                    "discount_rate": recommended_product.price.discount_rate,
+                },
+                "review": {
+                    "score": recommended_product.review.score,
+                    "count": recommended_product.review.count,
+                    "top_keywords": recommended_product.review.top_keywords,
+                },
+                "description_short": recommended_product.description_short,
+            }
+    
+    # 3. 브랜드 톤앤매너 조회 (CRM Guideline JSON 연동)
     brand_tone_data = get_brand_tone_from_guideline(brand_name)
     
-    # 3. State 업데이트 (새로 조회된 경우에만)
-    if recommended_product:
-        state["recommended_product_id"] = recommended_product.product_id
-        state["product_data"] = {
-            "product_id": recommended_product.product_id,
-            "brand": recommended_product.brand,
-            "name": recommended_product.name,
-            "category": {
-                "major": recommended_product.category.major,
-                "middle": recommended_product.category.middle,
-                "small": recommended_product.category.small,
-            },
-            "price": {
-                "original_price": recommended_product.price.original_price,
-                "discounted_price": recommended_product.price.discounted_price,
-                "discount_rate": recommended_product.price.discount_rate,
-            },
-            "review": {
-                "score": recommended_product.review.score,
-                "count": recommended_product.review.count,
-                "top_keywords": recommended_product.review.top_keywords,
-            },
-            "description_short": recommended_product.description_short,
-        }
-    
+    # 4. State 업데이트
     if brand_tone_data:
         state["brand_tone"] = brand_tone_data
     else:
