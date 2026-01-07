@@ -42,12 +42,25 @@ class SupabaseClient:
 
     def save_generated_message(self, message_data: Dict[str, Any]) -> bool:
         """
-        Save generated message to 'generated_messages' table
+        Save generated message to 'crm_message_history' table
         """
         try:
-            response = self.client.table("generated_messages").insert(message_data).execute()
+            # Prepare payload matching crm_message_history schema
+            # Schema: brand, persona, intent, weather, beauty_profile, message_content, channel, query_signature
+            
+            payload = {
+                "brand": message_data.get("brand_name") or message_data.get("brand", "Unknown"),
+                "persona": message_data.get("persona_used") or message_data.get("persona", "Unknown"),
+                "intent": message_data.get("intent", "Marketing"),
+                "weather": message_data.get("weather", None),
+                "beauty_profile": message_data.get("beauty_profile", {}),
+                "message_content": message_data.get("message_text") or message_data.get("message_content", ""),
+                "channel": message_data.get("channel", None)
+            }
+
+            response = self.client.table("crm_message_history").insert(payload).execute()
             if response.data:
-                print("✅ Message saved to Supabase")
+                print("✅ Message saved to Supabase (crm_message_history)")
                 return True
             else:
                 print("❌ Failed to save message: No data returned")
@@ -58,26 +71,11 @@ class SupabaseClient:
 
     def get_recent_messages(self, user_id: str, product_id: str = None, days: int = 1) -> List[Dict[str, Any]]:
         """
-        Check for recent messages for the same user (and optionally same product)
+        Check for recent messages.
+        Note: 'crm_message_history' does NOT record user_id, so we cannot filter by user history.
+        Returning empty list to bypass.
         """
-        try:
-            cutoff = (datetime.now() - timedelta(days=days)).isoformat()
-            
-            query = self.client.table("generated_messages") \
-                .select("*") \
-                .eq("user_id", user_id) \
-                .gt("generated_at", cutoff) \
-                .order("generated_at", desc=True) \
-                .limit(5)
-
-            if product_id:
-                query = query.eq("product_id", product_id)
-            
-            response = query.execute()
-            return response.data
-        except Exception as e:
-            print(f"Error checking recent messages: {e}")
-            return []
+        return []
 
 # Global instance
 supabase_client = SupabaseClient()

@@ -36,4 +36,4 @@ export interface ErrorResponse {
   retry_count?: number;
 }
 
-export type ChannelType = 'APP PUSH' | 'SMS' | 'KAKAO' | 'EMAIL';
+export type ChannelType = 'APP_PUSH' | 'SMS' | 'KAKAO' | 'EMAIL';

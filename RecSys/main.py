@@ -20,7 +20,6 @@ class RecommendationRequest(BaseModel):
     user_id: str
     target_brand: Optional[List[str]] = [] # Target brand list
     intention: Optional[str] = None # Recommendation intention (ex: "weather", "new_product", "general")
-    user_data: Optional[CustomerProfile] = None
 
 class RecommendationResponse(BaseModel):
     product_id: str
