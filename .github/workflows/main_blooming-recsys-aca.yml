@@ -1,0 +1,47 @@
+name: Build and deploy RecSys to Azure Container Apps (GPU)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'RecSys/**'
+      - '.github/workflows/main_blooming-recsys-aca.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout to the repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+            client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_F808584E1997428298FB2B7E822E071E }}
+            tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_413E4F4BFF1E4CCEB2FDF9FD38B9086C }}
+            subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_6DF9F81F8A324513A2AE189EDC0C72CF }}
+
+      - name: Build and push image to ACR
+        run: |
+          az acr login --name ${{ secrets.AZURE_CONTAINER_REGISTRY }}
+          docker build -t ${{ secrets.AZURE_CONTAINER_REGISTRY }}.azurecr.io/blooming-recsys:${{ github.sha }} ./RecSys
+          docker push ${{ secrets.AZURE_CONTAINER_REGISTRY }}.azurecr.io/blooming-recsys:${{ github.sha }}
+
+      - name: Deploy to Azure Container Apps
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          containerAppName: 'blooming-recsys-beta'
+          resourceGroup: 'blooming-rg' # Replace with actual RG if different
+          imageToDeploy: ${{ secrets.AZURE_CONTAINER_REGISTRY }}.azurecr.io/blooming-recsys:${{ github.sha }}
+          # Environment variables for the container
+          environmentVariables: |
+            OPENAI_API_KEY=secretref:openai-api-key
+            SUPABASE_URL=secretref:supabase-url
+            SUPABASE_KEY=secretref:supabase-key

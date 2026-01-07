@@ -5,6 +5,7 @@ import uvicorn
 from recommendation_model_API import get_recommendation
 from dotenv import load_dotenv
 import os
+import torch
 from models import CustomerProfile
 
 # Load environment variables
@@ -35,7 +36,12 @@ async def favicon():
 
 @app.get("/")
 async def root():
-    return {"status": "healthy", "service": "Recommendation System"}
+    return {
+        "status": "healthy", 
+        "service": "Recommendation System",
+        "gpu_available": torch.cuda.is_available(),
+        "device_count": torch.cuda.device_count() if torch.cuda.is_available() else 0
+    }
 
 @app.post("/recommend", response_model=RecommendationResponse)
 async def recommend(request: RecommendationRequest):
