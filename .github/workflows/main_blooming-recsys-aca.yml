@@ -54,13 +54,23 @@ jobs:
       - name: Configure GPU and Scaling
         run: |
           az extension add --name containerapp --upgrade
+          # Add GPU workload profile to the environment if it doesn't exist
+          # Profile type 'Consumption-GPU-NC8as-T4' is standard for T4 GPUs
+          az containerapp env workload-profile add \
+            --name blooming-recsys-beta-env \
+            --resource-group DefaultResourceGroup-USW3 \
+            --workload-profile-name gpu-profile \
+            --workload-profile-type Consumption-GPU-NC8as-T4 \
+            --min-nodes 0 \
+            --max-nodes 10
+
+          # Update the container app to use the GPU workload profile
           az containerapp update \
             --name blooming-recsys-beta \
             --resource-group DefaultResourceGroup-USW3 \
+            --workload-profile-name gpu-profile \
             --min-replicas 1 \
             --max-replicas 1 \
             --cpu 4.0 \
             --memory 16Gi \
-            --set-env-vars OPENAI_API_KEY=secretref:openai-api-key SUPABASE_URL=secretref:supabase-url SUPABASE_KEY=secretref:supabase-key \
-            --gpu 1 \
-            --gpu-type T4
+            --set-env-vars OPENAI_API_KEY=secretref:openai-api-key SUPABASE_URL=secretref:supabase-url SUPABASE_KEY=secretref:supabase-key
