@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     RecSys_API_URL: str = "http://localhost:8001/recommend"
     
     # CORS
-    allowed_origins: str = "http://localhost:5173"
+    allowed_origins: str = "http://localhost:5173,https://brave-river-0b768e200.2.azurestaticapps.net"
     
     @property
     def allowed_origins_list(self) -> List[str]:

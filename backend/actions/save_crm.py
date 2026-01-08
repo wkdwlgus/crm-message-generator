@@ -45,11 +45,11 @@ def save_crm_message_node(state: GraphState) -> GraphState:
         
         # 5. Call Service to Save
         crm_history_service.save_message(
-            brand=product_info["brand"],
+            brand=product_info.get("brand", "Unknown"),
             persona=persona_name,
             intent=state.get("crm_reason", "regular"),
             weather=state.get("weather_detail", ""),
-            product_name=product_info["name"],
+            product_name=product_info.get("name", "상품"),
             channel=channel,
             beauty_profile=beauty_profile,
             message_content=msg_content

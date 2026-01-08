@@ -120,7 +120,8 @@ async def generate_message(
             "retry_count": 0,
             "error": "",
             "success": False,
-            "retrieved_legal_rules": []
+            "retrieved_legal_rules": [],
+            "product_data": {}  # Initialize to avoid KeyError in nodes
         }
 
         print("🔥 AI 메시지 생성 시작...")

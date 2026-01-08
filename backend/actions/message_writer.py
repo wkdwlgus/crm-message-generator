@@ -49,8 +49,8 @@ def message_writer_node(state: GraphState) -> GraphState:
     crm_reason = state.get("crm_reason", "일반홍보")
     weather_detail = state.get("weather_detail", "")
     target_pid = state.get("target_persona", "4") # Default to '4'
-    brand_name = product_data['brand']
-    product_name = product_data['name']
+    brand_name = product_data.get('brand', 'Unknown')
+    product_name = product_data.get('name', '상품')
     
     # 1. Intent & Persona Logic (New)
     # Intent Logic (Use crm_reason directly)

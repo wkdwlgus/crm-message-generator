@@ -149,15 +149,18 @@ def info_retrieval_node(state: GraphState) -> GraphState:
         if recommended_product:
             brand_name = recommended_product.brand
         else:
-            # 추천 상품이 없는 경우 처리 (예: 기본 브랜드 설정 또는 에러)
-            print("⚠️ Recommended product is None. Using default or target brand.")
-            # target_brand가 있으면 그것을 사용, 없으면 Unknown
-            if isinstance(recommended_brand, list) and recommended_brand:
-                brand_name = recommended_brand[0]
-            elif isinstance(recommended_brand, str) and recommended_brand:
-                brand_name = recommended_brand
-            else:
-                brand_name = "Unknown"
+            brand_name = "Unknown"
+            
+            # [Fallback] Create dummy product data to avoid KeyError in next nodes
+            state["product_data"] = {
+                "product_id": "DEFAULT",
+                "brand": brand_name,
+                "name": "추천 상품",
+                "category": {"major": "Skincare", "middle": "Basic", "small": "Cream"},
+                "price": {"original_price": 0, "discounted_price": 0, "discount_rate": 0},
+                "review": {"score": 5.0, "count": 100, "top_keywords": ["촉촉함", "순함"]},
+                "description_short": "고객님께 꼭 맞는 상품을 준비 중입니다."
+            }
     
     # 2. 브랜드 톤앤매너 조회 (CRM Guideline JSON 연동)
     brand_tone_data = get_brand_tone_from_guideline(brand_name)
