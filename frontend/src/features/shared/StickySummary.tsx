@@ -230,9 +230,9 @@ export function StickySummary() {
       {/* 결과 미리보기 카드 (히스토리 리스트는 제거됨) */}
       {generatedResult && selectedChannel && (
         <ResultCard 
-          content={generatedResult.content || generatedResult} 
+          content={typeof generatedResult === 'object' ? generatedResult.content : generatedResult} 
           channel={selectedChannel} 
-          similarUserIds={generatedResult.similarUserIds || []}
+          similarUserIds={typeof generatedResult === 'object' ? generatedResult.similarUserIds : []}
         />
       )}
     </div>
