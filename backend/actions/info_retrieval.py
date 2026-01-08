@@ -69,7 +69,7 @@ def get_recommendation_from_api(user_id: str, user_data: CustomerProfile, target
     실패 시 None 반환.
     """
     try:
-        url = settings.RecSys_API_URL
+        url = settings.RECSYS_API_URL
         
         payload = {
             "user_id": user_id,
@@ -301,7 +301,7 @@ def call_recsys_api(user_data, target_brand: str = "", intent: str = ""):
     """
     try:
         # RecSys API 호출
-        recsys_url = settings.RecSys_API_URL
+        recsys_url = settings.RECSYS_API_URL
         
         # target_brand가 리스트인지 확인하고 payload 구성
         if isinstance(target_brand, list):
