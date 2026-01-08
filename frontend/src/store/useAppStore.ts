@@ -34,7 +34,7 @@ interface AppState {
   targetBrand: string;
   selectedChannel: ChannelType | null;
   isGenerating: boolean;
-  generatedResult: string | null;
+  generatedResult: { content: string; similarUserIds: string[] } | string | null;  // [UPDATED] 객체 또는 문자열
   activeOptions: PersonaOptionSet;
   customerList: CustomerDB[];
   selectedCustomer: CustomerDB | null;
@@ -54,7 +54,7 @@ interface AppState {
   setTargetBrand: (brand: string) => void;
   setSelectedChannel: (channel: ChannelType | null) => void;
   setIsGenerating: (val: boolean) => void;
-  setGeneratedResult: (result: string | null) => void;
+  setGeneratedResult: (result: { content: string; similarUserIds: string[] } | string | null) => void;  // [UPDATED]
   setCustomerList: (list: CustomerDB[]) => void;
   setSelectedCustomer: (customer: CustomerDB | null) => void;
   setSeason: (season: string | null) => void;

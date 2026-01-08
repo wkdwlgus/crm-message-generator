@@ -8,27 +8,7 @@ from models.product import Product, ProductCategory, ProductPrice, ProductReview
 import httpx
 import json
 from config import settings
-
-
-class GraphState(TypedDict):
-    """LangGraph State 정의"""
-    user_id: str
-    user_data: CustomerProfile
-    recommended_brand: str  # orchestrator에서 결정된 추천 브랜드
-    recommended_product_id: str
-    product_data: dict
-    brand_tone: dict
-    channel: str
-    message: str
-    crm_reason: str = ""       # CRM 발송 이유 (예: 날씨, 할인행사, 일반홍보)
-    weather_detail: str = ""   # 날씨 상세 (crm_reason이 '날씨'일 때 사용. 예: 폭염 주의보, 장마철 습기)
-    target_brand: str = ""     # 선택된 브랜드 (없으면 빈 문자열)
-    compliance_passed: bool
-    retry_count: int
-    error: str
-    error_reason: str  # Compliance 실패 이유
-    success: bool  # API 응답용
-    retrieved_legal_rules: list  # 캐싱용: Compliance 노드에서 한 번 검색한 규칙 재사용
+from actions.orchestrator import GraphState  # [FIX] Import shared GraphState
 
 
 def _convert_dict_to_product(data: dict) -> Optional[Product]:
@@ -47,6 +27,12 @@ def _convert_dict_to_product(data: dict) -> Optional[Product]:
         price = parse_json_field(data.get('price'))
         review = parse_json_field(data.get('review'))
         analytics = parse_json_field(data.get('analytics'))
+        
+        # [FIX] Handle None values in category fields
+        if category:
+            category['major'] = category.get('major') or '기타'
+            category['middle'] = category.get('middle') or '기타'
+            category['small'] = category.get('small') or '기타'
 
         return Product(
             product_id=str(data.get('id') or data.get('product_id')), 
@@ -91,14 +77,30 @@ def get_recommendation_from_api(user_id: str, user_data: CustomerProfile, target
                 if not p_data.get('product_id') and result.get('product_id'):
                     p_data['product_id'] = result['product_id']
                 
+                # [FIX] Validate category fields before conversion
+                if p_data.get('category'):
+                    cat = p_data['category']
+                    if isinstance(cat, dict):
+                        cat['major'] = cat.get('major') or '기타'
+                        cat['middle'] = cat.get('middle') or '기타'
+                        cat['small'] = cat.get('small') or '기타'
+                
                 print(f"✅ RecSys Success: {p_data.get('name')}")
-                return _convert_dict_to_product(p_data)
+                product = _convert_dict_to_product(p_data)
+                
+                if product:
+                    return product
+                else:
+                    print("⚠️ Product conversion failed after RecSys success")
+                    return None
             else:
                 print("⚠️ RecSys returned no product_data")
                 return None
                 
     except Exception as e:
         print(f"❌ RecSys API Failed: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
@@ -116,6 +118,12 @@ def info_retrieval_node(state: GraphState) -> GraphState:
     Returns:
         업데이트된 GraphState
     """
+    # [DEBUG] similar_user_ids 입력 확인 (함수 시작 시점)
+    similar_ids_at_start = state.get("similar_user_ids", [])
+    print(f"🔍 [INFO_RETRIEVAL DEBUG] similar_user_ids at START: {len(similar_ids_at_start)} items")
+    if similar_ids_at_start:
+        print(f"   First 5: {similar_ids_at_start[:5]}")
+    
     user_data = state["user_data"]
     recommended_product_id = state.get("recommended_product_id") # Input으로 들어올 수도 있음
     product_data_input = state.get("product_data")
@@ -189,6 +197,31 @@ def info_retrieval_node(state: GraphState) -> GraphState:
             },
             "description_short": recommended_product.description_short,
         }
+    else:
+        # [FIX] recommended_product가 없어도 기본 product_data 설정
+        print("⚠️ No product found, creating default product_data")
+        state["recommended_product_id"] = "unknown_product"
+        state["product_data"] = {
+            "product_id": "unknown_product",
+            "brand": brand_name,
+            "name": f"{brand_name} 추천 상품",
+            "category": {
+                "major": "스킨케어",
+                "middle": "기초케어",
+                "small": "토너",
+            },
+            "price": {
+                "original_price": 0,
+                "discounted_price": 0,
+                "discount_rate": 0,
+            },
+            "review": {
+                "score": 0.0,
+                "count": 0,
+                "top_keywords": [],
+            },
+            "description_short": f"{brand_name}의 추천 상품입니다.",
+        }
     
     if brand_tone_data:
         state["brand_tone"] = brand_tone_data
@@ -199,6 +232,12 @@ def info_retrieval_node(state: GraphState) -> GraphState:
             "tone_manner_style": "Friendly",
             "tone_manner_examples": [],
         }
+    
+    # [DEBUG] similar_user_ids 보존 확인
+    similar_ids = state.get("similar_user_ids", [])
+    print(f"🔍 [INFO_RETRIEVAL DEBUG] similar_user_ids before return: {len(similar_ids)} items")
+    if similar_ids:
+        print(f"   First 5: {similar_ids[:5]}")
 
     return state
 
@@ -320,7 +359,7 @@ def call_recsys_api(user_data, target_brand: str = "", intent: str = ""):
         
         print(f"[RecSys API] Calling {recsys_url} with intent={intent}, brand={target_brand}")
         
-        with httpx.Client(timeout=30.0) as client:
+        with httpx.Client(timeout=None) as client:
             response = client.post(recsys_url, json=payload)
             response.raise_for_status()
             result = response.json()

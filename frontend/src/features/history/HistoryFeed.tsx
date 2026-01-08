@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
+import ReactMarkdown from 'react-markdown';
+import remarkBreaks from 'remark-breaks';
 
 export const HistoryFeed = () => {
   const { 
@@ -63,7 +65,7 @@ export const HistoryFeed = () => {
             </div>
 
             {/* 내용 카드 */}
-            <div className="flex-1 border-2 border-black bg-white p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-sm transition-all">
+            <div className="flex-1 border-2 border-black bg-white p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
               <div className="flex justify-between items-start mb-3">
                 <div className="flex gap-2 items-center">
                   <span className="font-black bg-black text-white px-2 py-0.5 text-xs uppercase">
@@ -78,9 +80,20 @@ export const HistoryFeed = () => {
                 </span>
               </div>
               
-              <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
-                {log.content}
-              </p>
+              <div className="text-sm text-gray-800 leading-relaxed">
+                <ReactMarkdown 
+                  remarkPlugins={[remarkBreaks]}
+                  components={{
+                    ul: ({node, ...props}) => <ul className="list-disc pl-5 my-2" {...props} />,
+                    ol: ({node, ...props}) => <ol className="list-decimal pl-5 my-2" {...props} />,
+                    strong: ({node, ...props}) => <strong className="font-black" {...props} />,
+                    a: ({node, ...props}) => <a className="text-blue-600 underline font-bold" {...props} />,
+                    p: ({node, ...props}) => <p className="mb-1" {...props} />,
+                  }}
+                >
+                  {log.content}
+                </ReactMarkdown>
+              </div>
 
               {/* 당시 사용된 뷰티 프로필 스냅샷 */}
               <div className="mt-4 pt-3 border-t border-gray-100 flex flex-wrap gap-2 text-[10px] text-gray-400 font-medium">

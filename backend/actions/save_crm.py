@@ -21,16 +21,9 @@ def save_crm_message_node(state: GraphState) -> GraphState:
         target_pid = state.get("target_persona", "1")
         channel = state.get("channel", "APP_PUSH")
         
-        # 2. Persona Name Resolution (DB Load)
-        base_path = os.path.dirname(os.path.dirname(__file__))
-        persona_db_path = os.path.join(base_path, "actions/persona_db.json")
-        try:
-            with open(persona_db_path, "r", encoding="utf-8") as f:
-                pdb = json.load(f)
-                persona_name = pdb.get(str(target_pid), {}).get("persona_name", "Unknown")
-        except:
-            persona_name = "Unknown"
-            
+        # 2. Call Service to Save (Save as ID)
+        # 사용자 요청: 페르소나 명칭이 아닌 ID(숫자)로 저장
+        
         # 3. Construct Strict Beauty Profile (for Signature)
         beauty_profile = {
             "skin_type": getattr(user_data, "skin_type", []),
@@ -46,7 +39,7 @@ def save_crm_message_node(state: GraphState) -> GraphState:
         # 5. Call Service to Save
         crm_history_service.save_message(
             brand=product_info.get("brand", "Unknown"),
-            persona=persona_name,
+            persona=str(target_pid),  # Modified: Save as ID instead of Name
             intent=state.get("crm_reason", "regular"),
             weather=state.get("weather_detail", ""),
             product_name=product_info.get("name", "상품"),

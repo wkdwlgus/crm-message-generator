@@ -1,12 +1,22 @@
 import React, { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkBreaks from 'remark-breaks';
 
 interface ResultCardProps {
   content: string;
   channel: string;
+  similarUserIds?: string[];  // [NEW] 유사 유저 ID 리스트
 }
 
-export function ResultCard({ content, channel }: ResultCardProps) {
+export function ResultCard({ content, channel, similarUserIds = [] }: ResultCardProps) {
   const [copied, setCopied] = useState(false);
+  
+  console.log('🔍 [ResultCard DEBUG] Received props:', { 
+    content: content?.substring(0, 50), 
+    channel, 
+    similarUserIds: similarUserIds?.length,
+    similarUserIdsSample: similarUserIds?.slice(0, 5)
+  });
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content);
@@ -28,10 +38,19 @@ export function ResultCard({ content, channel }: ResultCardProps) {
       </div>
 
       {/* 본문 영역 */}
-      <div className="p-4 bg-yellow-50 min-h-[120px]">
-        <p className="text-sm font-medium whitespace-pre-wrap leading-relaxed text-gray-900">
+      <div className="p-4 bg-yellow-50 min-h-[120px] text-sm text-gray-900 leading-relaxed">
+        <ReactMarkdown 
+          remarkPlugins={[remarkBreaks]}
+          components={{
+            ul: ({node, ...props}) => <ul className="list-disc pl-5 my-2" {...props} />,
+            ol: ({node, ...props}) => <ol className="list-decimal pl-5 my-2" {...props} />,
+            strong: ({node, ...props}) => <strong className="font-black" {...props} />,
+            a: ({node, ...props}) => <a className="text-blue-600 underline font-bold" {...props} />,
+            p: ({node, ...props}) => <p className="mb-1" {...props} />,
+          }}
+        >
           {content}
-        </p>
+        </ReactMarkdown>
       </div>
 
       {/* 푸터 / 액션 */}
@@ -49,6 +68,35 @@ export function ResultCard({ content, channel }: ResultCardProps) {
           {copied ? '✅ COPIED!' : '📋 COPY TEXT'}
         </button>
       </div>
+
+      {/* 유사 유저 ID 표시 */}
+      {similarUserIds && similarUserIds.length > 0 && (
+        <div className="border-t-2 border-black p-4 bg-blue-50">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm">👥</span>
+            <span className="font-bold text-xs uppercase tracking-wider">
+              Similar Users ({similarUserIds.length})
+            </span>
+          </div>
+          <div className="text-xs text-gray-700 max-h-32 overflow-y-auto">
+            <div className="flex flex-wrap gap-2">
+              {similarUserIds.slice(0, 50).map((userId, idx) => (
+                <span 
+                  key={idx}
+                  className="px-2 py-1 bg-white border border-gray-300 rounded font-mono text-[10px]"
+                >
+                  {userId}
+                </span>
+              ))}
+              {similarUserIds.length > 50 && (
+                <span className="px-2 py-1 text-gray-500 italic text-[10px]">
+                  ... +{similarUserIds.length - 50} more
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
