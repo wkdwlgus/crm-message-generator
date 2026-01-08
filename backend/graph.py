@@ -9,7 +9,7 @@ from actions.message_writer import message_writer_node
 from actions.compliance_check import compliance_check_node
 from actions.save_crm import save_crm_message_node
 from actions.retrieve_crm import retrieve_crm_node
-from actions.personalize import personalize_message_node
+# from actions.personalize import personalize_message_node # Removed
 from actions.return_response import return_response_node
 from config import settings
 
@@ -37,8 +37,22 @@ def check_cache(state: GraphState) -> str:
     """
     CRM Cache Hit 여부에 따른 경로 분기
     """
-    if state.get("cache_hit", False):
-        return "personalize"
+    # [EXTREME DEBUG] 모든 state 키 확인
+    print(f"\n🔀 [Check Cache Decision] ALL STATE KEYS:")
+    for key in ["cache_hit", "message", "message_template", "compliance_passed", "user_id"]:
+        value = state.get(key, "KEY_NOT_FOUND")
+        if isinstance(value, str):
+            preview = value[:50] if len(value) > 50 else value
+        else:
+            preview = value
+        print(f"   - {key}: {preview}")
+    
+    cache_hit_value = state.get("cache_hit", False)
+    print(f"\n🔀 [Check Cache Decision] cache_hit={cache_hit_value} (type: {type(cache_hit_value)})")
+    print(f"🔀 [Check Cache Decision] Routing to: {'return_response' if cache_hit_value else 'message_writer'}")
+    
+    if cache_hit_value:
+        return "return_response" # Direct to return_response (Skipping personalize)
     else:
         return "message_writer"
 
@@ -60,7 +74,6 @@ def create_workflow() -> StateGraph:
     workflow.add_node("message_writer", message_writer_node)
     workflow.add_node("compliance_check", compliance_check_node)
     workflow.add_node("save_crm", save_crm_message_node)
-    workflow.add_node("personalize", personalize_message_node)
     workflow.add_node("return_response", return_response_node)
     
     # 엣지 설정
@@ -68,12 +81,12 @@ def create_workflow() -> StateGraph:
     workflow.add_edge("orchestrator", "info_retrieval")
     workflow.add_edge("info_retrieval", "retrieve_crm")
     
-    # 조건부 엣지: retrieve_crm → personalize (Hit) or message_writer (Miss)
+    # 조건부 엣지: retrieve_crm → return_response (Hit) or message_writer (Miss)
     workflow.add_conditional_edges(
         "retrieve_crm",
         check_cache,
         {
-            "personalize": "personalize",
+            "return_response": "return_response",
             "message_writer": "message_writer"
         }
     )
@@ -91,8 +104,7 @@ def create_workflow() -> StateGraph:
         }
     )
     
-    workflow.add_edge("save_crm", "personalize")
-    workflow.add_edge("personalize", "return_response")
+    workflow.add_edge("save_crm", "return_response") # Direct to return_response
     workflow.add_edge("return_response", END)
     
     # 워크플로우 컴파일

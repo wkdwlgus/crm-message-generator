@@ -18,6 +18,7 @@ export interface MessageResponse {
   generated_at?: string;
   user_id?: string;
   persona_id?: string;
+  similar_user_ids?: string[];  // [NEW] 유사 유저 ID 리스트
 }
 
 export interface CustomerPersona {

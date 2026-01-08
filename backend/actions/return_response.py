@@ -8,25 +8,7 @@ import random
 from typing import TypedDict
 from models.user import CustomerProfile
 from models.message import GeneratedMessage, MessageResponse
-
-
-class GraphState(TypedDict):
-    """LangGraph State 정의"""
-    user_id: str
-    user_data: CustomerProfile
-    target_brand: str
-    target_persona: str
-    recommended_product_id: str
-    product_data: dict
-    brand_tone: dict
-    channel: str
-    message: str
-    compliance_passed: bool
-    retry_count: int
-    error: str
-    error_reason: str  # Compliance 실패 이유
-    success: bool  # API 응답용
-    retrieved_legal_rules: list  # 캐싱용: Compliance 노드에서 한 번 검색한 규칙 재사용
+from actions.orchestrator import GraphState  # [FIX] Import shared GraphState
 
 
 def _load_fallback_messages():
@@ -87,6 +69,17 @@ def return_response_node(state: GraphState) -> dict:
     Returns:
         API 응답 딕셔너리
     """
+    # [DEBUG] 진입 시점 상태 확인
+    print("\n" + "="*80)
+    print("📤 [Return Response Node] Started")
+    print("="*80)
+    print(f"🔍 cache_hit: {state.get('cache_hit', False)}")
+    print(f"🔍 compliance_passed: {state.get('compliance_passed', False)}")
+    current_message = state.get("message", "")
+    print(f"🔍 state['message'] length: {len(current_message)} chars")
+    print(f"🔍 state['message'] preview (first 150 chars):\n{current_message[:150]}")
+    print("="*80 + "\n")
+    
     # 고객 이름 추출 (이름이 없는 경우 '00' 사용)
     customer_name = getattr(state['user_data'], 'name', '00')
     
@@ -121,9 +114,21 @@ def return_response_node(state: GraphState) -> dict:
     persona_used = state.get("target_persona", "default_persona")
     brand_name = state.get("target_brand")
     
+    # [Moved Logic] Personalization Placeholder Replacement
+    # Since personalize node is removed, we handle it here or ensure logic is self-contained
+    # Perform placeholder substitution for customer name
+    final_message = state.get("message", "")
+    user_name = getattr(state['user_data'], 'name', '고객')
+    
+    if final_message:
+         final_message = final_message.replace("{{customer_name}}", user_name) \
+                           .replace("{customer_name}", user_name) \
+                           .replace("{{Customer_Name}}", user_name) \
+                           .replace("{Customer_Name}", user_name)
+
     generated_message = GeneratedMessage(
         user_id=state["user_id"],
-        message_text=state["message"],
+        message_text=final_message,
         channel=state.get("channel", "SMS"),
         product_id=state.get("recommended_product_id"),
         brand_name=brand_name,
@@ -131,7 +136,7 @@ def return_response_node(state: GraphState) -> dict:
         compliance_passed=state.get("compliance_passed", True),
         retry_count=state.get("retry_count", 0),
     )
-    
+    print(f"✅ GeneratedMessage 생성: {generated_message.message_text}")
     response = MessageResponse(
         message=generated_message.message_text,
         user=generated_message.user_id,
@@ -140,7 +145,17 @@ def return_response_node(state: GraphState) -> dict:
 
     print(f"✅ 최종 응답 생성 response: {response}")
     
+    # [DEBUG] state 확인
+    similar_ids = state.get("similar_user_ids", [])
+    print(f"🔍 [DEBUG] similar_user_ids from state: {similar_ids}")
+    print(f"🔍 [DEBUG] similar_user_ids length: {len(similar_ids)}")
+    
     # API가 success: True를 확인할 수 있도록 추가
     result = response.model_dump()
     result["success"] = True
+    result["similar_user_ids"] = similar_ids  # [NEW] 유사 유저 ID 포함
+    
+    print(f"🔍 [DEBUG] Final result keys: {result.keys()}")
+    print(f"🔍 [DEBUG] Final result similar_user_ids: {result.get('similar_user_ids', 'NOT FOUND')}")
+    
     return result

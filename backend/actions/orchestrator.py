@@ -84,6 +84,9 @@ class GraphState(TypedDict):
     target_brand: str = ""     # 선택된 브랜드 (없으면 빈 문자열)
     target_persona: str = ""   # 선택된 페르소나 (예: Persona_1)
     use_crm_cache: bool = True # [NEW] CRM 메시지 재사용 여부 (Default: True)
+    cache_hit: bool = False    # [NEW] CRM 캐시 히트 여부
+    message_template: str = "" # [NEW] 캐시된 메시지 템플릿
+    similar_user_ids: list = []  # [NEW] 유사한 프로필을 가진 유저 ID 리스트
     recommended_brand: str  # 추천 브랜드 
     recommended_product_id: str
     product_data: dict
@@ -137,17 +140,21 @@ def orchestrator_node(state: GraphState) -> GraphState:
     if target_brand=="":
         print("⚠️ Target Brand is empty, using DB-based recommendation logic.")
         # [DB Query] Mock 대신 실제 DB 데이터 사용 (user_data 필터링 추가)
-        recent_brands = get_persona_recent_brands(target_persona, user_data)
+        recent_brands, similar_user_ids = get_persona_recent_brands(target_persona, user_data)
         recommended_brand = determine_recommended_brand(target_persona, recent_brands)
     else:
         recommended_brand = [target_brand]
+        similar_user_ids = []  # brand가 지정된 경우 유사 유저 없음
     
     # State 업데이트
     state["recommended_brand"] = recommended_brand
+    state["similar_user_ids"] = similar_user_ids  # [NEW] 유사 유저 ID 저장
     state["retry_count"] = 0
     
     print(f"🎯 Orchestrator 결과:")
     print(f"  - Recommended Brand: {recommended_brand}")
+    print(f"  - Similar User IDs count: {len(similar_user_ids)}")
+    print(f"  - 🔍 [DEBUG] Saving to state - similar_user_ids: {similar_user_ids[:5]}...")
     # print(f"  - Persona: {persona.name} ({persona.persona_id})")
     
     return state
@@ -158,124 +165,103 @@ def get_persona_recent_brands(personatype: str, target_user: CustomerProfile) ->
     """
     Supabase 'customers' 테이블에서 
     1) 해당 페르소나(persona_id)를 가지고
-    2) Target User와 [피부타입, 고민, 톤, 키워드]가 일치하는 유사 사용자들의
-    'brand_purchases' 데이터를 조회하여 통합 반환합니다.
+    2) 랜덤하게 샘플링한 사용자들의 'brand_purchases' 데이터를 조회하여 통합 반환합니다.
     """
     try:
         # P 접두사 제거
         target_p = str(personatype)
-        print(f"🔎 [DB] Fetching similar users for persona: {target_p}")
+        print(f"\n🔎 [DB] Fetching users for persona: {target_p}")
         
-        # [Optimization] Apply Filters on DB Side to bypass 1000 limit issue.
-        # DB has Korean values, so we use target_user attributes directly without translation.
+        # [STEP 1] count 쿼리는 타임아웃 문제로 제거, 랜덤 offset 범위 사용
+        # 페르소나당 대략 20,000~40,000명 정도 있다고 가정
+        max_offset = 30000  # 충분히 큰 offset 범위
+        random_offset = random.randint(0, max_offset)
+        print(f"🎲 Random offset: {random_offset}")
         
-        query = supabase_client.client.table("user_data").select("*").eq("persona_id", target_p)
-
-        # 1. Preferred Tone Filter
-        if target_user.preferred_tone:
-             query = query.eq("preferred_tone", target_user.preferred_tone)
-             
-        # 2. Skin Type Filter (Value in List)
-        # Check if DB's skin_type (String) is in User's skin_type (List)
-        if target_user.skin_type:
-            query = query.in_("skin_type", target_user.skin_type)
-
+        # [STEP 2] 랜덤 offset부터 1000개 가져오기 (프로필 데이터 포함)
+        query = supabase_client.client.table("user_data").select(
+            "user_id, brand_purchases, skin_type, skin_concerns, preferred_tone, keywords"
+        ).eq("persona_id", target_p).range(random_offset, random_offset + 999)
+        
         # Execute
         resp = query.execute()
-            
-        # [Removed Fallback] User confirmed DB strictly uses numeric persona (e.g., '1', '2', '3')
-        # Sending 'P3' caused invalid input syntax error for numeric/json columns.
         
+        print(f"📊 DB Query returned {len(resp.data)} users")
+            
         if not resp.data:
             print(f"⚠️ No users found for persona '{target_p}'.")
-            return []
-            
-        # Python-side Filtering (Strict Matching)
-        similar_users_brands = []
+            return [], []  # [FIX] 2개 값 반환
         
-        # Target User Data (Assuming Korean)
-        user_skin_type = set(target_user.skin_type)
-        user_skin_concerns = set(target_user.skin_concerns)
-        user_tone = target_user.preferred_tone
-        user_keywords = set(target_user.keywords)
+        print(f"✅ Fetched {len(resp.data)} random users from persona '{target_p}'")
         
-        match_count = 0
+        # [NEW] 유사 프로필 검사
+        print(f"\n🔍 Checking for similar profiles...")
+        print(f"🎯 Target User: {target_user.user_id}")
+        print(f"   - skin_type: {target_user.skin_type}")
+        print(f"   - skin_concerns: {target_user.skin_concerns}")
+        print(f"   - preferred_tone: {target_user.preferred_tone}")
+        print(f"   - keywords: {target_user.keywords}")
         
+        similar_count = 0
+        exact_match_count = 0
+        similar_user_ids = []  # [NEW] 유사 유저 ID 저장
+        
+        # 브랜드 추출 및 유사도 검사
+        all_brands = []
         for row in resp.data:
             # Skip self
             if row.get("user_id") == target_user.user_id:
                 continue
-                
-            # 1. Skin Type Match (Direct Comparison)
-            # DB is String in Korean (e.g., "지성"), User is List (e.g., ["지성", "복합성"])
-            # DB value must be in User's list (which matches the query 'in_' logic)
-            db_skin_type = row.get("skin_type")
-            if db_skin_type not in user_skin_type:
-                continue
-                
-            # 2. Skin Concerns Match (Direct Comparison with Overlap)
-            # DB is String "A, B" or List["A", "B"]?
-            # From inspection, it looked like String in inspect_db_values.py output: "트러블, 모공" (Type: str)
-            db_concerns_raw = row.get("skin_concerns")
-            db_concerns = set()
-            if isinstance(db_concerns_raw, list):
-                db_concerns = set(db_concerns_raw)
-            elif isinstance(db_concerns_raw, str):
-                db_concerns = set([c.strip() for c in db_concerns_raw.split(",") if c.strip()])
-                
-            # Logic: Intersection > 0 (At least one common concern)
-            # This matches the verified script logic
-            if not user_skin_concerns.intersection(db_concerns):
-                 continue
-
-            # 3. Tone Match
-            db_tone = row.get("preferred_tone")
-            if db_tone != user_tone:
-                continue
-                
-            # 4. Keywords Match
-                
-            # 4. Keywords Match (Partial Overlap allowed or strict?)
-            # Since full translation map is missing, let's try direct comparison 
-            db_keywords = set(row.get("keywords", []))
-            # If raw match works
-            if db_keywords == user_keywords:
-                pass # Match
-            else:
-                # Try simple mapping
-                db_keywords_kor = set()
-                for k in db_keywords:
-                    # Try simplified map (map keys are MixedCase as provided by user)
-                    if k in KEYWORD_MAP_SIMPLIFIED:
-                        db_keywords_kor.add(KEYWORD_MAP_SIMPLIFIED[k])
-                    elif k.lower() in KEYWORD_MAP_SIMPLIFIED: # Fallback to lowercase check
-                        db_keywords_kor.add(KEYWORD_MAP_SIMPLIFIED[k.lower()]) 
-                    else:
-                        db_keywords_kor.add(k) # Keep original if no map
-                
-                if db_keywords_kor != user_keywords:
-                    # [Debug Log] Unmatched Keywords
-                    # print(f"  - Keyword Mismatch: DB({db_keywords_kor}) != User({user_keywords})")
-                    continue
             
-            # Matched!
-            match_count += 1
+            # [NEW] 프로필 유사도 검사
+            db_skin_type = set([row.get("skin_type")]) if isinstance(row.get("skin_type"), str) else set(row.get("skin_type", []))
+            db_concerns_raw = row.get("skin_concerns", [])
+            db_concerns = set(db_concerns_raw) if isinstance(db_concerns_raw, list) else set([c.strip() for c in db_concerns_raw.split(",") if c.strip()])
+            db_tone = row.get("preferred_tone", "")
+            db_keywords = set(row.get("keywords", []))
+            
+            user_skin_type = set(target_user.skin_type)
+            user_concerns = set(target_user.skin_concerns)
+            user_keywords = set(target_user.keywords)
+            
+            # 완전 일치 검사
+            if (db_skin_type == user_skin_type and 
+                db_concerns == user_concerns and 
+                db_tone == target_user.preferred_tone and 
+                db_keywords == user_keywords):
+                exact_match_count += 1
+                similar_user_ids.append(row.get('user_id'))  # [NEW] ID 저장
+                print(f"   ✅ EXACT MATCH: {row.get('user_id')}")
+            
+            # 부분 일치 검사 (skin_type + tone 일치)
+            elif (db_skin_type == user_skin_type and db_tone == target_user.preferred_tone):
+                similar_count += 1
+                similar_user_ids.append(row.get('user_id'))  # [NEW] ID 저장
+                
             purchases = row.get("brand_purchases", [])
             if isinstance(purchases, list):
-                similar_users_brands.extend(purchases)
+                all_brands.extend(purchases)
             elif isinstance(purchases, str):
-                 similar_users_brands.extend([b.strip() for b in purchases.split(",") if b.strip()])
-                 
-        print(f"👥 Found {match_count} similar users (Same Profile).")
+                all_brands.extend([b.strip() for b in purchases.split(",") if b.strip()])
         
-        all_brands = [b for b in similar_users_brands if b]
-
-        print(f"📦 Loaded Brands from Similar Users (Count: {len(all_brands)}): {all_brands[:10]}...")
-        return all_brands
+        # 중복 제거 및 빈 값 제거
+        all_brands = [b for b in all_brands if b]
+        
+        print(f"\n📊 Similarity Check Results:")
+        print(f"   - Total checked: {len(resp.data)} users")
+        print(f"   - 🎯 Exact matches (all 4 attributes): {exact_match_count}")
+        print(f"   - 🔹 Partial matches (skin_type + tone): {similar_count}")
+        print(f"   - 📦 Total brand purchases collected: {len(all_brands)}")
+        print(f"   - Sample brands: {all_brands[:10]}...")
+        print(f"   - 👥 Similar user IDs (first 10): {similar_user_ids[:10]}")
+        
+        return all_brands, similar_user_ids  # [NEW] 유사 유저 ID도 반환
 
     except Exception as e:
         print(f"❌ Error fetching brands from DB: {e}")
-        return []
+        import traceback
+        traceback.print_exc()
+        return [], []  # [FIX] 2개 값 반환
 
 
 def determine_recommended_brand(personatype: int, recent_brands: List[str]) -> List[str]:
@@ -294,38 +280,49 @@ def determine_recommended_brand(personatype: int, recent_brands: List[str]) -> L
         점수순으로 정렬된 추천 브랜드 리스트
     """
     try:
-        # [Debugging Log]
-        print(f"🕵️ Determine Brand Input - Persona: {personatype}, Recent Brands: {recent_brands}")
+        print(f"\n🕵️ [Determine Brand] Starting...")
+        print(f"  Input - Persona: {personatype} (type: {type(personatype)})")
+        print(f"  Input - Recent Brands Count: {len(recent_brands)}")
+        print(f"  Input - Recent Brands: {recent_brands[:5]}..." if len(recent_brands) > 5 else f"  Input - Recent Brands: {recent_brands}")
 
         # 현재 파일(orchestrator.py)이 있는 위치 기준 (Relative Path)
         current_dir = Path(__file__).parent
         json_path = current_dir / "persona_db.json"
         
         if not json_path.exists():
-            print(f"⚠️ Warning: Persona DB file not found at {json_path}")
+            print(f"❌ Error: Persona DB file not found at {json_path}")
             return ["이니스프리"]
             
         with open(json_path, "r", encoding="utf-8") as f:
             persona_db = json.load(f)
+        
+        print(f"✅ Persona DB loaded. Available keys: {list(persona_db.keys())}")
             
         # 1. 타겟 페르소나 브랜드 식별
-        target_brands = set()
         key = str(personatype)
         if key.lower().startswith('p'):
             key = key[1:]
         
-        if key in persona_db:
-            target_brands = set(persona_db[key].get("recommended_brands", []))
-        else:
-            print(f"⚠️ Warning: Persona type {personatype} not found in DB")
+        print(f"  Looking up persona key: '{key}'")
+        
+        if key not in persona_db:
+            print(f"❌ Error: Persona '{key}' not found in DB!")
+            print(f"  Available personas: {list(persona_db.keys())}")
+            return ["이니스프리"]
+        
+        target_brands = set(persona_db[key].get("recommended_brands", []))
+        print(f"  ✅ Persona '{key}' found. Recommended brands: {target_brands}")
             
         # 2. 최근 이용 브랜드 빈도 계산
         recent_counts = Counter(recent_brands)
+        print(f"  Recent brand frequencies: {dict(recent_counts.most_common(5))}")
         
         # 3. 랭킹 후보군 선정 (페르소나 브랜드 + 최근 이용 브랜드)
         candidate_brands = target_brands.union(recent_counts.keys())
+        print(f"  Total candidate brands: {len(candidate_brands)}")
         
         if not candidate_brands:
+            print(f"⚠️ No candidate brands found. Returning default.")
             return ["이니스프리"]
             
         # 4. 점수 계산
@@ -348,16 +345,20 @@ def determine_recommended_brand(personatype: int, recent_brands: List[str]) -> L
         
         # 6. 최고 점수 브랜드들 추출 (동점자 처리)
         if not scored_brands:
+            print(f"⚠️ No scored brands. Returning default.")
             return ["이니스프리"]
             
         max_score = scored_brands[0][1]
         top_brands = [brand for brand, score in scored_brands if score == max_score]
         
-        print(f"📊 Brand Ranking (Persona {personatype}): {scored_brands}")
-        print(f"🏆 Top Brands (Score {max_score}): {top_brands}")
+        print(f"\n📊 Brand Ranking Results:")
+        print(f"  Top 5 Scored: {scored_brands[:5]}")
+        print(f"🏆 Final Selection (Score {max_score}): {top_brands}\n")
         
         return top_brands
 
     except Exception as e:
-        print(f"❌ Error determining recommended brand: {e}")
+        print(f"❌ Exception in determine_recommended_brand: {e}")
+        import traceback
+        traceback.print_exc()
         return ["이니스프리"]

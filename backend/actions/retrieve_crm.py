@@ -1,5 +1,5 @@
-
 import json
+from typing import Dict, Any
 from actions.orchestrator import GraphState
 from services.crm_history_service import crm_history_service
 
@@ -7,10 +7,19 @@ def retrieve_crm_node(state: GraphState) -> GraphState:
     """
     CRM Cache Retrieval Node
     메시지 생성 전, 동일 조건의 과거 성공 메시지가 있는지 확인합니다.
+    
+    Returns:
+        Updated GraphState (preserves all existing keys)
     """
     print("\n" + "="*80)
     print("🧐 [Retrieve CRM Node] Checking Cache...")
     print("="*80)
+    
+    # [DEBUG] similar_user_ids 입력 확인
+    similar_ids_input = state.get("similar_user_ids", [])
+    print(f"🔍 [RETRIEVE_CRM DEBUG] similar_user_ids at entry: {len(similar_ids_input)} items")
+    if similar_ids_input:
+        print(f"   First 5: {similar_ids_input[:5]}")
     
     try:
         # 0. Check Reuse Option
@@ -28,25 +37,9 @@ def retrieve_crm_node(state: GraphState) -> GraphState:
         crm_reason = state.get("crm_reason", "regular")
         weather_detail = state.get("weather_detail", "")
         
-        # Persona Name Resolution (Optional for Signature, but good for consistency)
-        # Signature uses 'persona' string. In saving we used name. Here we might need name too if signature depends on it.
-        # Let's use the same logic as save/writer.
-        # Note: If signature uses 'persona' as just the ID or generic, it's easier.
-        # Previous logic used 'persona_name' from DB.
-        # I need to duplicate the persona loading logic or rely on `target_persona` ID if I change the signature strategy.
-        # Wait, previous `message_writer` loaded `persona_db`.
-        # I should load it here too to match the signature.
-        
-        base_path = "backend/actions/persona_db.json" # Relative path might be tricky, let's use os
-        import os
-        base_path = os.path.dirname(os.path.dirname(__file__))
-        persona_db_path = os.path.join(base_path, "actions/persona_db.json")
-        try:
-            with open(persona_db_path, "r", encoding="utf-8") as f:
-                pdb = json.load(f)
-                persona_name = pdb.get(str(target_pid), {}).get("persona_name", "Unknown")
-        except:
-            persona_name = "Unknown"
+        # [Modified] Use Persona ID instead of Name for Cache Signature Strictness
+        # Previously loaded name from DB, but now we save/retrieve by ID ("1", "2")
+        pass
 
         # 2. Strict Beauty Profile
         beauty_profile = {
@@ -59,7 +52,7 @@ def retrieve_crm_node(state: GraphState) -> GraphState:
         # 3. Check Cache
         cached_msg = crm_history_service.find_message(
             brand=product_info["brand"],
-            persona=persona_name,
+            persona=str(target_pid),
             intent=crm_reason,
             weather=weather_detail,
             product_name=product_info["name"],
@@ -69,16 +62,48 @@ def retrieve_crm_node(state: GraphState) -> GraphState:
         
         if cached_msg:
             print(f"✅ [Retrieve CRM] Cache Hit! Using cached template.")
+            print(f"📝 Cached message preview: {cached_msg[:100]}...")
+            
+            # [Moved Logic] Personalize logic moved here
+            final_msg = cached_msg
+            
+            # [NEW] Add Notice Prefix
+            notice = "━━━━━━━━━━━━━━━━━━━━━━━━\n📢 **시스템 알림**: 과거 동일한 조건의 생성 이력이 있어, 저장된 메시지를 불러옵니다.\n━━━━━━━━━━━━━━━━━━━━━━━━\n\n\n"
+            final_msg = notice + final_msg
+            
+            # [FIX] Update state directly to preserve all keys (including similar_user_ids)
             state["cache_hit"] = True
-            state["message_template"] = cached_msg # Template loaded
-            # message will be finalized in personalize node
+            state["compliance_passed"] = True
+            state["message_template"] = cached_msg
+            state["message"] = final_msg
+            
+            # [DEBUG] similar_user_ids 출력 확인
+            similar_ids_output = state.get("similar_user_ids", [])
+            print(f"🔍 [RETRIEVE_CRM DEBUG] similar_user_ids before return (cache hit): {len(similar_ids_output)} items")
+            if similar_ids_output:
+                print(f"   First 5: {similar_ids_output[:5]}")
+            
+            return state
+
         else:
             print(f"❄️ [Retrieve CRM] Cache Miss. Proceeding to Writer.")
             state["cache_hit"] = False
-            state["message_template"] = ""
+            
+            # [DEBUG] similar_user_ids 출력 확인
+            similar_ids_output = state.get("similar_user_ids", [])
+            print(f"🔍 [RETRIEVE_CRM DEBUG] similar_user_ids before return (cache miss): {len(similar_ids_output)} items")
+            if similar_ids_output:
+                print(f"   First 5: {similar_ids_output[:5]}")
+            
+            return state
 
     except Exception as e:
-        print(f"⚠️ [Retrieve CRM] Error checking cache: {e}")
+        print(f"❌❌❌ [CRITICAL ERROR] Exception in retrieve_crm: {e}")
+        import traceback
+        traceback.print_exc()
         state["cache_hit"] = False
-        
+        return state
+    
+    # This should never be reached
+    state["cache_hit"] = False
     return state

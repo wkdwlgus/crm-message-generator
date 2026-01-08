@@ -36,23 +36,22 @@ const BeautyProfileSelector = () => {
       {/* 4가지 스키마 설정 영역 Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
         
-        {/* 1. Skin Type (Multi) */}
+        {/* 1. Skin Type (Single) */}
         <div>
-          <label className={labelStyle}>Skin Type (Multi)</label>
-          <div className={multiSelectBoxStyle}>
-            {(activeOptions?.skinTypes ?? []).map((key) => (
-              <label key={key} className={checkboxItemStyle}>
-                <input
-                  type="checkbox"
-                  checked={simulationData.skin_type.includes(key)}
-                  onChange={() => handleMultiSelect('skin_type', key)}
-                  className="w-4 h-4 text-black border-2 border-black focus:ring-0 rounded-none checked:bg-black checked:hover:bg-black"
-                />
-                <span className="text-sm font-bold">
+          <label className={labelStyle}>Skin Type (Single)</label>
+          <div className="relative">
+            <select
+              value={simulationData.skin_type[0] || ''}
+              onChange={(e) => setSimulationData({ skin_type: e.target.value ? [e.target.value] : [] })}
+              className={selectStyle}
+            >
+              <option value="">선택하세요</option>
+              {(activeOptions?.skinTypes ?? []).map((key) => (
+                <option key={key} value={key}>
                   {SKIN_TYPE_OPTIONS[key as keyof typeof SKIN_TYPE_OPTIONS] ?? key}
-                </span>
-              </label>
-            ))}            
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 

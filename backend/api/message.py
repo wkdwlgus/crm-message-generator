@@ -27,7 +27,7 @@ async def get_customers_endpoint():
 
 @router.post(
     "/message",
-    response_model=MessageResponse,
+    # response_model=MessageResponse,  # [FIX] 제거하여 dict 그대로 반환
     responses={
         400: {"model": ErrorResponse},
         404: {"model": ErrorResponse},
@@ -98,6 +98,13 @@ async def generate_message(
         
     # 2. LangGraph 워크플로우 실행
     try:
+        # [DEBUG] 프론트엔드에서 받은 요청 데이터 확인
+        print(f"\n📥 [API Request Debug]")
+        print(f"  - targetBrand: '{request.targetBrand}' (type: {type(request.targetBrand)})")
+        print(f"  - hasBrand: {request.hasBrand}")
+        print(f"  - persona: '{request.persona}'")
+        print(f"  - intention: '{request.intention}'")
+        
         initial_state = {
             "user_id": request.userId,
             "user_data": customer,
@@ -120,7 +127,8 @@ async def generate_message(
             "retry_count": 0,
             "error": "",
             "success": False,
-            "retrieved_legal_rules": []
+            "retrieved_legal_rules": [],
+            "similar_user_ids": [],  # [FIX] 초기화 추가
         }
 
         print("🔥 AI 메시지 생성 시작...")
@@ -129,33 +137,24 @@ async def generate_message(
         
         # 3. 결과 검증
         if result.get("success", False):
-            # [Removed] Save to Supabase (Double Entry Prevention)
-            # Graph 내의 'save_crm' 노드가 Template을 저장하므로, 여기서 저장하면 중복(Template + Personalized)이 발생함.
-            # Analytics를 위해 Personalized Message 저장이 필요하다면 별도 테이블(generated_logs 등)을 사용해야 함.
-            # user request에 따라 Placeholder(Template)만 남기기 위해 이곳의 저장은 비활성화.
-            """
-            try:
-                save_data = {
-                    "user_id": result["user_id"],
-                    "message_text": result["message"],
-                    "channel": result["channel"],
-                    "persona_used": result.get("target_persona"),
-                    "product_id": result.get("recommended_product_id"),
-                    "brand_name": result.get("target_brand") or result.get("recommended_brand"),
-                    "compliance_passed": result.get("compliance_passed", False),
-                    "retry_count": result.get("retry_count", 0)
-                }
-                supabase_client.save_generated_message(save_data)
-            except Exception as e:
-                print(f"⚠️ Failed to save generated message: {e}")
-            """
-
-            # MessageResponse 모델로 변환하여 반환
-            return MessageResponse(
-                message=result["message"],
-                user=result["user_id"],
-                method=result["channel"]
-            )
+            # [DEBUG] 최종 API 응답 확인
+            similar_ids_final = result.get("similar_user_ids", [])
+            print(f"🔍 [API DEBUG] Final result similar_user_ids: {len(similar_ids_final)} items")
+            if similar_ids_final:
+                print(f"   First 5: {similar_ids_final[:5]}")
+            
+            # [FIX] Dict를 직접 반환 (similar_user_ids 포함)
+            # MessageResponse 모델 변환하지 않고 return_response_node의 결과를 그대로 반환
+            api_response = {
+                "message": result["message"],
+                "user": result["user_id"],
+                "method": result["channel"],
+                "similar_user_ids": similar_ids_final
+            }
+            
+            print(f"🔍 [API DEBUG] Returning API response with keys: {api_response.keys()}")
+            
+            return api_response
         else:
             # 에러 응답
             raise HTTPException(
